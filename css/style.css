@@ -241,3 +241,35 @@ select option { color: #000; }
   .dock.left, .dock.right { width: 62px; }
   .dock .lv { display: none; }
 }
+
+/* ---------- Tray: your icon | hand | Draw/Pass, hugging the tiles ---------- */
+#tray { display: flex !important; justify-content: center; align-items: center; gap: clamp(10px, 2vw, 22px); }
+#hand { flex: 0 1 auto; justify-content: center; }
+#me {
+  display: flex !important; flex-direction: column; align-items: center; gap: 3px; flex: none; min-width: 0;
+  padding: 6px 10px; background: rgba(0,0,0,.30); border: 2px solid rgba(255,255,255,.08); border-radius: 14px;
+  transition: border-color .2s, box-shadow .2s;
+}
+#me .who { display: flex; flex-direction: column; align-items: center; line-height: 1.15; }
+#me .nm { display: block !important; font-weight: 700; font-size: 14px; max-width: 90px; }
+#me .sc { display: block; font-size: 20px !important; font-weight: 800; color: var(--gold); }
+#me .av { width: 40px; height: 40px; font-size: 18px; }
+#me.turn { border-color: var(--glow); box-shadow: 0 0 14px rgba(255,226,122,.35); }
+#actions { display: flex; flex-direction: column; gap: 6px; flex: none; }
+#actions .btn { padding: 9px 14px; font-weight: 600; background: rgba(0,0,0,.4); white-space: nowrap; }
+#actions .btn:disabled { opacity: .35; }
+@media (max-height: 480px) {
+  #me { padding: 3px 8px; gap: 1px; }
+  #me .av { width: 28px; height: 28px; font-size: 12px; }
+  #me .nm { font-size: 11px; } #me .sc { font-size: 15px !important; }
+  #actions { gap: 4px; } #actions .btn { padding: 6px 10px; font-size: 13px; }
+}
+@media (max-width: 560px) {
+  #tray { gap: 8px; }
+  #me { padding: 4px 6px; } #me .nm { display: none !important; }
+  #me .av { width: 30px; height: 30px; font-size: 13px; }
+  #actions .btn { padding: 7px 8px; font-size: 13px; }
+}
+@media (max-height: 480px) { #toast { top: 34%; } }
+#btnDraw small { font-size: inherit; font-weight: 500; }
+@media (max-width: 560px) { #btnDraw small { display: block; font-size: 11px; opacity: .85; } }

@@ -152,8 +152,10 @@ function cpuAct() {
   }
 }
 
+const myTurnNow = () => game && !busy && !game.s.handOver && game.current.human;
+
 function humanPlay(move) {
-  if (busy) return;
+  if (!myTurnNow()) return;
   busy = true;
   selected = null;
   game.play(move);
@@ -233,7 +235,7 @@ function renderDocks() {
   const bone = MODES[s.mode].draws ? ` · Boneyard <b>${s.boneyard.length}</b>` : '';
   $('info').innerHTML = `${MODES[s.mode].name}${s.mode === 'fives' && s.spinnerRule === 'all' ? ' (all spin)' : ''} to ${s.target} · Hand ${s.handNo}${ends}${bone}`;
   $('me').className = s.turn === me.idx && !s.handOver ? 'turn' : '';
-  $('me').innerHTML = `${avatarHtml(me)}<span class="nm"></span><span class="sc">${me.score}</span>`;
+  $('me').innerHTML = `${avatarHtml(me)}<div class="who"><span class="nm"></span><span class="sc">${me.score}</span></div>`;
   $('me').querySelector('.nm').textContent = me.name;
 }
 
@@ -321,15 +323,21 @@ function renderHand() {
   // Size tiles so the whole hand fits on one row (phones, big draws)
   const n = sorted.length || 1;
   const gap = parseFloat(getComputedStyle(hand).columnGap) || 6;
-  const availW = hand.clientWidth - gap * (n - 1) - 10;
-  const hgt = Math.max(40, Math.min(hand.clientHeight - 14, 128, availW / (n * 0.545)));
+  // The hand sits between your icon and the buttons, so measure what's left of the tray.
+  const tray = $('tray'), cs = getComputedStyle(tray);
+  const trayGap = parseFloat(cs.columnGap) || 12;
+  const room = tray.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)
+    - $('me').offsetWidth - $('actions').offsetWidth - trayGap * 2;
+  const availW = room - gap * (n - 1) - 10;
+  const hgt = Math.max(36, Math.min(tray.clientHeight - 22, 128, availW / (n * 0.545)));
   for (const t of hand.children) t.style.height = `${hgt}px`;
   const canDraw = myTurn && game.canDraw();
   const mustPass = myTurn && !moves.length && !canDraw;
   $('btnDraw').classList.toggle('hidden', !MODES[s.mode].draws);
   $('btnDraw').disabled = !canDraw;
   $('btnDraw').classList.toggle('pulse', canDraw);
-  $('btnDraw').textContent = `Draw (${s.boneyard.length})`;
+  const left = s.boneyard.length;
+  $('btnDraw').innerHTML = `Draw <small>(${left} in boneyard)</small>`;
   $('btnPass').disabled = !mustPass;
   $('btnPass').classList.toggle('pulse', mustPass);
 }
@@ -341,7 +349,7 @@ let ghostEls = [];
 let drag = null;
 
 function startDrag(e, t, moves, node) {
-  if (busy || e.button > 0) return;
+  if (!myTurnNow() || e.button > 0) return;
   e.preventDefault();
   drag = { t, moves, node, x0: e.clientX, y0: e.clientY, active: false, float: null, hot: null };
   window.addEventListener('pointermove', onDragMove);
@@ -416,7 +424,7 @@ function shake(t) {
 }
 
 function onHandTile(t, moves) {
-  if (busy) return;
+  if (!myTurnNow()) return;
   const id = tileId(t);
   const mine = moves.filter((m) => tileId(m.tile) === id);
   if (!mine.length) {
@@ -431,14 +439,15 @@ function onHandTile(t, moves) {
 }
 
 $('btnDraw').onclick = () => {
-  if (busy || !game.canDraw()) return;
+  if (!myTurnNow() || !game.canDraw()) return;
   const t = game.draw();
   status(`You drew the ${t[0]}-${t[1]}.`);
   render();
   if (!game.legalMovesFor().length && !game.canDraw()) status('Still nothing to play — pass.');
 };
 $('btnPass').onclick = () => {
-  if (busy || !game.mustPass()) return;
+  if (!myTurnNow() || !game.mustPass()) return;
+  busy = true;
   game.pass();
   render();
   setTimeout(step, 300);

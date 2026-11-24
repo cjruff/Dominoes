@@ -10,6 +10,7 @@
 //   bigScore       this player scored more than 20 in one play
 //   bigDrawSelf    this player drew more than 3 tiles in one turn
 //   bigDrawOther   someone else drew more than 3 tiles in one turn
+//   loseZero       this player lost the game without scoring a point (falls back to 'lose')
 
 const CAT = { win: ['Meow!'], bigScore: ['Meow!'] };
 
@@ -19,6 +20,7 @@ export const LINES = {
   eyton: CAT,
   rhys: CAT,
   wally: CAT,
+  corey: { loseZero: ['Fuck You'] },
 };
 
 export function lineFor(rosterId, event, rng = Math.random) {

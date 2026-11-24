@@ -13,6 +13,8 @@ export const medalImg = (m) => `assets/medals/${m}.webp`;
 const T100 = [1, 10, 25, 50, 100];
 const T250 = [1, 25, 50, 100, 250];
 const T500 = [1, 50, 100, 250, 500];
+const T50 = [1, 5, 10, 25, 50];      // rare
+const TFAST = [1, 10, 25, 50, 100];  // uncommon
 
 export const CATEGORIES = [
   'Winning & Competition', 'Domino Mastery', 'Scoring & Big Plays',
@@ -31,10 +33,10 @@ export const ACHIEVEMENTS = [
   { id: 'dominator', cat: 0, name: 'Domino Dominator', desc: 'Win 10 games', tiers: [10], medal: 'silver', life: 'wins' },
   { id: 'conqueror', cat: 0, name: 'The Conqueror', desc: 'Win 50 games', tiers: [50], medal: 'gold', life: 'wins' },
   { id: 'legend', cat: 0, name: 'Table Legend', desc: 'Win 100 games', tiers: [100], medal: 'platinum', life: 'wins' },
-  { id: 'cleanSweep', cat: 0, name: 'Clean Sweep', desc: 'Win a game in which you won every hand (2+ hands)', tiers: T100 },
-  { id: 'hatTrick', cat: 0, name: 'Hat Trick', desc: 'Win 3 games in a row', tiers: T250 },
-  { id: 'onFire', cat: 0, name: 'On Fire', desc: 'Win 5 games in a row', tiers: T250 },
-  { id: 'unstoppable', cat: 0, name: 'Unstoppable', desc: 'Win 10 games in a row', tiers: T100 },
+  { id: 'cleanSweep', cat: 0, name: 'Clean Sweep', desc: 'Win a game in a single hand', tiers: T50 },
+  { id: 'hatTrick', cat: 0, name: 'Hat Trick', desc: 'Win 3 games in a row', tiers: TFAST },
+  { id: 'onFire', cat: 0, name: 'On Fire', desc: 'Win 5 games in a row', tiers: T50 },
+  { id: 'unstoppable', cat: 0, name: 'Unstoppable', desc: 'Win 10 games in a row', tiers: [1, 3, 5, 10, 25] },
   { id: 'comebackKid', cat: 0, name: 'Comeback Kid', desc: 'Win after being behind by more than 50 points', tiers: [1], medal: 'gold' },
   { id: 'davidGoliath', cat: 0, name: 'David vs. Goliath', desc: 'Beat an Expert opponent', tiers: T100 },
   { id: 'humiliation', cat: 0, name: 'Humiliation', desc: 'Win by 100+ points over an opponent', tiers: T100 },
@@ -42,8 +44,8 @@ export const ACHIEVEMENTS = [
 
   // ---- Domino Mastery ----
   { id: 'doubleTrouble', cat: 1, name: 'Double Trouble', desc: 'Play 10 doubles in one game', tiers: T100 },
-  { id: 'doubleDown', cat: 1, name: 'Double Down', desc: 'Play 5 doubles in one hand', tiers: T100 },
-  { id: 'dirtyDeal', cat: 1, name: 'Dirty Deal', desc: 'Be dealt 3+ doubles in one hand', tiers: T100 },
+  { id: 'doubleDown', cat: 1, name: 'Double Down', desc: 'Play 5 doubles in one hand', tiers: T50 },
+  { id: 'dirtyDeal', cat: 1, name: 'Dirty Deal', desc: 'Be dealt 3+ doubles in one hand', tiers: [1, 50, 100, 250, 500] },
   { id: 'dominoRally', cat: 1, name: 'Domino Rally', desc: 'Score on 3 turns in a row (Fives)', tiers: T250, fives: true },
   { id: 'noDraw', cat: 1, name: 'No Draw Necessary', desc: 'Win a game without drawing a tile (Fives or Draw)', tiers: [1], medal: 'silver', notBlock: true },
   { id: 'blockParty', cat: 1, name: 'Block Party', desc: 'Win a blocked hand', tiers: T250 },
@@ -51,44 +53,44 @@ export const ACHIEVEMENTS = [
   { id: 'doubleSixClub', cat: 1, name: 'Double Six Club', desc: 'Play the double-six', tiers: T500 },
 
   // ---- Scoring & Big Plays ----
-  { id: 'pointCollector', cat: 2, name: 'Point Collector', desc: 'Score 100 points (all games)', tiers: [100], medal: 'bronze', life: 'points' },
-  { id: 'highRoller', cat: 2, name: 'High Roller', desc: 'Score 500 points (all games)', tiers: [500], medal: 'silver', life: 'points' },
-  { id: 'bigWinner', cat: 2, name: 'Big Winner', desc: 'Score 1,000 points (all games)', tiers: [1000], medal: 'gold', life: 'points' },
-  { id: 'jackpot', cat: 2, name: 'Jackpot', desc: 'Score 25+ points in a single play', tiers: T500, fives: true },
-  { id: 'doubleJackpot', cat: 2, name: 'Double Jackpot', desc: 'Make two 25+ point plays in one hand', tiers: T500, fives: true },
-  { id: 'precision', cat: 2, name: 'Precision Landing', desc: 'Win by landing exactly on the target score', tiers: T500 },
+  { id: 'pointCollector', cat: 2, name: 'Point Collector', desc: 'Score 1,000 points (all games)', tiers: [1000], medal: 'bronze', life: 'points' },
+  { id: 'highRoller', cat: 2, name: 'High Roller', desc: 'Score 10,000 points (all games)', tiers: [10000], medal: 'silver', life: 'points' },
+  { id: 'bigWinner', cat: 2, name: 'Big Winner', desc: 'Score 50,000 points (all games)', tiers: [50000], medal: 'gold', life: 'points' },
+  { id: 'jackpot', cat: 2, name: 'Jackpot', desc: 'Score 25+ points in a single play', tiers: TFAST, fives: true },
+  { id: 'doubleJackpot', cat: 2, name: 'Double Jackpot', desc: 'Make two 25+ point plays in one hand', tiers: T50, fives: true },
+  { id: 'precision', cat: 2, name: 'Precision Landing', desc: 'Win by landing exactly on the target score', tiers: TFAST },
   { id: 'scoreboardShock', cat: 2, name: 'Scoreboard Shock', desc: 'Score 50+ points in one hand', tiers: T500 },
-  { id: 'shutout', cat: 2, name: 'Shutout', desc: 'Win a game without an opponent scoring', tiers: T500 },
-  { id: 'chainReaction', cat: 2, name: 'Chain Reaction', desc: '5 scoring plays in a row, by you and your opponents', tiers: T500, fives: true },
-  { id: 'doubledUpOn', cat: 2, name: 'Doubled Up On', desc: 'End a hand holding only doubles (3+)', tiers: T500 },
+  { id: 'shutout', cat: 2, name: 'Shutout', desc: 'Win a game without an opponent scoring', tiers: T50 },
+  { id: 'chainReaction', cat: 2, name: 'Chain Reaction', desc: '5 scoring plays in a row, by you and your opponents', tiers: TFAST, fives: true },
+  { id: 'doubledUpOn', cat: 2, name: 'Doubled Up On', desc: 'End a hand holding only doubles (3+)', tiers: T50 },
 
   // ---- Evil Genius / Opponent Torment ----
-  { id: 'deadEnd', cat: 3, name: 'Dead End', desc: 'Your play leaves the next opponent unable to play', tiers: T500 },
+  { id: 'deadEnd', cat: 3, name: 'Dead End', desc: 'Your play leaves the next opponent unable to play', tiers: [10, 250, 500, 1000, 2500] },
   { id: 'gotcha', cat: 3, name: 'Gotcha!', desc: 'Your plays force opponents to draw 5+ tiles in one game', tiers: T500, notBlock: true },
-  { id: 'revenge', cat: 3, name: 'The Revenge', desc: 'Beat the opponent who won the previous game', tiers: T500 },
+  { id: 'revenge', cat: 3, name: 'The Revenge', desc: 'Beat the opponent who won the previous game', tiers: TFAST },
   { id: 'notSoFast', cat: 3, name: 'Not So Fast', desc: 'Force an opponent with one tile left to draw', tiers: T500, notBlock: true },
-  { id: 'cruel', cat: 3, name: 'Cruel Intentions', desc: 'Win a blocked hand holding fewer tiles than everyone', tiers: T500 },
+  { id: 'cruel', cat: 3, name: 'Cruel Intentions', desc: 'Win a blocked hand holding fewer tiles than everyone', tiers: TFAST },
   { id: 'denial', cat: 3, name: 'Domino Denial', desc: 'Stop an opponent playing their last tile, then win the hand', tiers: T500 },
-  { id: 'saboteur', cat: 3, name: 'The Saboteur', desc: 'An opponent has to draw 3 turns in a row', tiers: T500, notBlock: true },
+  { id: 'saboteur', cat: 3, name: 'The Saboteur', desc: 'An opponent has to draw 3 turns in a row', tiers: TFAST, notBlock: true },
   { id: 'tooEasy', cat: 3, name: 'Too Easy', desc: 'Beat a Beginner 10 times', tiers: [10], medal: 'bronze', life: 'winsBeginner' },
   { id: 'aiHumiliation', cat: 3, name: 'AI Humiliation', desc: 'Beat an Expert 10 times', tiers: [10], medal: 'platinum', life: 'winsExpert' },
   { id: 'noMercy', cat: 3, name: 'No Mercy', desc: 'Win 10 games against the same opponent', tiers: [10], medal: 'gold', life: 'bestVsOne' },
-  { id: 'uno', cat: 3, name: 'Uno!', desc: 'An opponent down to one tile draws 3+', tiers: T500, notBlock: true },
-  { id: 'soClose', cat: 3, name: 'So Close, Yet So Far', desc: 'Draw 3+ tiles when down to your last one', tiers: T500, notBlock: true },
+  { id: 'uno', cat: 3, name: 'Uno!', desc: 'An opponent down to one tile draws 3+', tiers: TFAST, notBlock: true },
+  { id: 'soClose', cat: 3, name: 'So Close, Yet So Far', desc: 'Draw 3+ tiles when down to your last one', tiers: TFAST, notBlock: true },
 
   // ---- Funny / Unusual ----
-  { id: 'butterfingers', cat: 4, name: 'Butterfingers', desc: 'Draw 10 tiles in one hand', tiers: T500, notBlock: true },
-  { id: 'hoarder', cat: 4, name: 'Hoarder', desc: 'Finish a hand with 10+ tiles', tiers: T500, notBlock: true },
-  { id: 'doubleDisaster', cat: 4, name: 'Double Disaster', desc: 'Finish a hand holding 3+ doubles', tiers: T500 },
-  { id: 'longGame', cat: 4, name: 'The Long Game', desc: 'Play a game lasting 25+ hands', tiers: T500 },
-  { id: 'soCloseLose', cat: 4, name: 'So Close!', desc: 'Lose by 1 point (5 in Fives)', tiers: T500 },
-  { id: 'comebackNobody', cat: 4, name: 'The Comeback Nobody Saw', desc: 'Win after being 100+ points behind', tiers: T500 },
-  { id: 'brickWall', cat: 4, name: 'Brick Wall', desc: '5 blocked hands in one game', tiers: T500 },
-  { id: 'godsAngry', cat: 4, name: 'The Domino Gods Are Angry', desc: 'Lose 5 games in a row', tiers: T500 },
-  { id: 'cheap', cat: 4, name: 'Cheap Bastard', desc: 'Lose a hand holding only the double-blank', tiers: T500 },
-  { id: 'howBoutNo', cat: 4, name: "How 'Bout No!", desc: 'Win a hand while an opponent holds only the double-blank', tiers: T500 },
-  { id: 'badPenny', cat: 4, name: 'A Bad Penny', desc: 'Get dealt the double-six right after being stuck with it at the end of the last hand', tiers: T250 },
-  { id: 'devilsWork', cat: 4, name: "The Devil's Work", desc: 'End a hand holding just the 6-6 and 6-0', tiers: T500 },
+  { id: 'butterfingers', cat: 4, name: 'Butterfingers', desc: 'Draw 10 tiles in one hand', tiers: T50, notBlock: true },
+  { id: 'hoarder', cat: 4, name: 'Hoarder', desc: 'Finish a hand with 10+ tiles', tiers: T50, notBlock: true },
+  { id: 'doubleDisaster', cat: 4, name: 'Double Disaster', desc: 'Finish a hand holding 3+ doubles', tiers: TFAST },
+  { id: 'longGame', cat: 4, name: 'The Long Game', desc: 'Play a game lasting 25+ hands', tiers: T50 },
+  { id: 'soCloseLose', cat: 4, name: 'So Close!', desc: 'Lose by 1 point (5 in Fives)', tiers: T50 },
+  { id: 'comebackNobody', cat: 4, name: 'The Comeback Nobody Saw', desc: 'Win after being 100+ points behind', tiers: T50 },
+  { id: 'brickWall', cat: 4, name: 'Brick Wall', desc: '5 blocked hands in one game', tiers: TFAST },
+  { id: 'godsAngry', cat: 4, name: 'The Domino Gods Are Angry', desc: 'Lose 5 games in a row', tiers: T50 },
+  { id: 'cheap', cat: 4, name: 'Cheap Bastard', desc: 'Lose a hand holding only the double-blank', tiers: TFAST },
+  { id: 'howBoutNo', cat: 4, name: "How 'Bout No!", desc: 'Win a hand while an opponent holds only the double-blank', tiers: TFAST },
+  { id: 'badPenny', cat: 4, name: 'A Bad Penny', desc: 'Get dealt the double-six right after being stuck with it at the end of the last hand', tiers: TFAST },
+  { id: 'devilsWork', cat: 4, name: "The Devil's Work", desc: 'End a hand holding just the 6-6 and 6-0', tiers: T50 },
 
   // ---- Long-Term / Dedication ----
   { id: 'regular', cat: 5, name: 'Regular', desc: 'Play 25 games', tiers: [25], medal: 'bronze', life: 'games' },
@@ -271,7 +273,8 @@ export function commitGame(tracker, game, store = globalThis.localStorage) {
     if (L.winStreak === 3) bump('hatTrick');
     if (L.winStreak === 5) bump('onFire');
     if (L.winStreak === 10) bump('unstoppable');
-    if (tracker.g.handsLost === 0) { bump('perfectRecord'); if (tracker.g.hands >= 2) bump('cleanSweep'); }
+    if (tracker.g.handsLost === 0) bump('perfectRecord');
+    if (tracker.g.hands === 1) bump('cleanSweep');
     if (tracker.g.maxDeficit > 50) bump('comebackKid');
     if (tracker.g.maxDeficit >= 100) bump('comebackNobody');
     if (opps.some((p) => p.level === 'expert')) { bump('davidGoliath'); L.winsExpert++; }

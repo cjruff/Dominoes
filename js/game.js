@@ -18,7 +18,8 @@ export const SPINNER_RULES = {
   all: 'Every double spins',
 };
 
-export function handSize(nPlayers) {
+export function handSize(nPlayers, mode) {
+  if (mode === 'block' && nPlayers === 4) return 7; // 4-player Block uses every tile
   return nPlayers === 2 ? 7 : 5;
 }
 
@@ -86,7 +87,7 @@ export class Game {
     s.handNo++;
     s.board = newBoard(s.spinnerRule);
     const set = this.dealRng.shuffle(makeSet());
-    const size = handSize(n);
+    const size = handSize(n, s.mode);
     for (const p of s.players) p.hand = set.splice(0, size);
     s.boneyard = set;
     s.passesInRow = 0;

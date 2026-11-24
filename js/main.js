@@ -666,7 +666,8 @@ function showGameOver() {
   const head = s.winner === null ? 'Game over' : w.human ? 'You win! 🎉' : `${esc(w.name)} wins`;
   // What the computer players say about the result
   const quotes = s.players.filter((p) => !p.human).map((p) => {
-    const line = lineFor(p.rosterId, p.idx === s.winner ? 'win' : 'lose');
+    const line = p.idx === s.winner ? lineFor(p.rosterId, 'win')
+      : (p.score === 0 && lineFor(p.rosterId, 'loseZero')) || lineFor(p.rosterId, 'lose');
     return line ? `<div class="quote">${avatarHtml(p)}<b>${esc(p.name)}:</b> “${esc(line)}”</div>` : '';
   }).join('');
   const shown = newMedals.slice(0, 8);
@@ -776,7 +777,7 @@ $('btnMenu').onclick = showMenu;
 
 function showRules() {
   showOverlay(`<h2>Rules</h2><div class="rules">
-    <h3>The deal</h3><p>Moe's Dominoes uses a double-six set (28 tiles). With 2 players each gets 7 tiles; with 3 or 4 players, 5 each. The rest are the boneyard. Everyone plays for themselves.</p>
+    <h3>The deal</h3><p>Moe's Dominoes uses a double-six set (28 tiles). With 2 players each gets 7 tiles; with 3 or 4 players, 5 each — except 4-player Block, which deals 7 each and uses every tile. The rest are the boneyard. Everyone plays for themselves.</p>
     <h3>Who leads</h3><p>On the first hand, the player with the highest double leads and must play it (if nobody has a double, the heaviest tile leads). After that, the winner of the last hand leads with any tile — the player who went out, or the lowest count when the hand was blocked. If a blocked hand ties for the lowest count, the highest double leads again.</p>
     <h3>Playing</h3><p>Turns go clockwise. Match one end of your tile to an open end of the line. Doubles are placed crosswise. Tap a tile to see where it fits, then tap the spot, double-tap the tile, or drag it there.</p>
     <h3>Ending a hand</h3><p><b>Going out (domino):</b> play your last tile and you score the pips left in everyone else's hands.<br>

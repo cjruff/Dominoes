@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#3b2414">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Moe's Dominoes</title>
+  <link rel="icon" href="assets/favicon-64.png" type="image/png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-title" content="Moe's Dominoes">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- ============ Setup ============ -->
+  <section id="setup" class="screen">
+    <div class="setup-card">
+      <img class="hero" src="assets/moe.webp" alt="Moe, a tuxedo cat in a vest, holding dominoes">
+      <h1 class="title">Moe's <span>Dominoes</span></h1>
+      <p class="subtitle">Double-six · 2 to 4 players</p>
+
+      <div class="field">
+        <label>Game</label>
+        <div class="seg" id="segMode">
+          <button data-v="fives">Fives</button>
+          <button data-v="block">Block</button>
+          <button data-v="draw">Draw</button>
+        </div>
+        <p class="hint" id="modeHint"></p>
+      </div>
+
+      <div class="field" id="fieldSpinner">
+        <label>Spinners</label>
+        <div class="seg" id="segSpinner">
+          <button data-v="first">First spinner only</button>
+          <button data-v="all">Every double spins</button>
+        </div>
+      </div>
+
+      <div class="field row2">
+        <div>
+          <label>Players</label>
+          <div class="seg" id="segPlayers">
+            <button data-v="2">2</button><button data-v="3">3</button><button data-v="4">4</button>
+          </div>
+        </div>
+        <div>
+          <label for="selTarget">Play to</label>
+          <select id="selTarget"></select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="inpName">Your name</label>
+        <input id="inpName" maxlength="16" autocomplete="off">
+      </div>
+
+      <div class="field">
+        <label>Computer players</label>
+        <div id="cpuList"></div>
+      </div>
+
+      <div class="buttons">
+        <button class="btn primary" id="btnStart">Deal</button>
+        <button class="btn" id="btnStats">Stats</button>
+        <button class="btn" id="btnAbout">About</button>
+      </div>
+      <p class="credit">Code: © Corey J Ruff</p>
+    </div>
+  </section>
+
+  <!-- ============ Game ============ -->
+  <section id="game" class="screen hidden">
+    <header id="topbar">
+      <button class="icon-btn" id="btnMenu" aria-label="Menu">☰</button>
+      <div id="seats"></div>
+      <div id="info"></div>
+    </header>
+    <main id="table">
+      <svg id="board" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div id="toast" aria-live="polite"></div>
+      <div id="status"></div>
+    </main>
+    <footer id="tray">
+      <div id="me"></div>
+      <div id="hand"></div>
+      <div id="actions">
+        <button class="btn" id="btnDraw">Draw</button>
+        <button class="btn" id="btnPass">Pass</button>
+      </div>
+    </footer>
+  </section>
+
+  <!-- ============ Overlay (hand summary, game over, menu, stats) ============ -->
+  <div id="overlay" class="hidden"><div class="panel" id="panel"></div></div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

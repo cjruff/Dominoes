@@ -98,8 +98,9 @@ export class Game {
     s.handPoints = s.players.map(() => 0);
     s.mustLead = null;
 
-    // First hand, or the last hand was blocked (everyone passed): highest double leads.
-    if (s.handNo === 1 || s.lastHandWinner === null || s.lastHandBlocked) {
+    // First hand, or a blocked hand tied for low count: highest double leads.
+    // Otherwise the last hand's winner (going out, or lowest count when blocked) leads.
+    if (s.handNo === 1 || s.lastHandWinner === null) {
       // Highest double leads (and must play it); with no doubles out, the heaviest tile.
       let best = null;
       for (const p of s.players) for (const t of p.hand) {
@@ -218,7 +219,10 @@ export class Game {
     }
     let award = 0;
     if (winner !== null) {
-      award = counts.reduce((sum, c, i) => (i === winner ? sum : sum + c), 0);
+      const others = counts.reduce((sum, c, i) => (i === winner ? sum : sum + c), 0);
+      // Going out scores everyone else's pips. A blocked hand uses the difference
+      // method: the low count scores the others' pips minus their own.
+      award = reason === 'blocked' ? Math.max(0, others - counts[winner]) : others;
       if (s.mode === 'fives') award = roundTo5(award);
       s.players[winner].score += award;
       s.handPoints[winner] += award;

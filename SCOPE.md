@@ -26,10 +26,10 @@ published on GitHub Pages like Eyton's Cribbage. One human player against
 ## House rules used (easy to change — say the word)
 
 - Hands: 7 tiles each with 2 players, 5 each with 3–4.
-- First hand: the highest double leads and must be played (heaviest tile if no doubles are out). After a blocked hand (everyone passed) the highest double leads again; otherwise the last hand's winner leads with anything.
+- First hand: the highest double leads and must be played (heaviest tile if no doubles are out). Later hands: the last hand's winner leads with anything (lowest count wins a blocked hand; a tie for low means the highest double leads).
 - **Fives:** after each play, if the open ends total a multiple of 5 you score it. A double at an end counts both halves. Going out scores the others' pips rounded to the nearest 5. Reaching the target on a scoring play wins at once.
 - **Spinners:** a spinner's side arms open only after both of its line sides are covered. With *Every double spins*, each double in the line opens its two sides once the line continues past it.
-- **Block/Draw:** first out scores every opponent's pips. A blocked hand goes to the lowest count (a tie for low scores nothing).
+- **Block/Draw:** first out scores every opponent's pips. A blocked hand goes to the lowest count, who scores the difference: opponents' pips minus their own (a tie for low scores nothing). Fives rounds this to the nearest 5.
 - Draw/Fives: draw one at a time until you can play; pass only when the boneyard is empty.
 - Default targets: Fives 150, Block and Draw 100 (selectable).
 

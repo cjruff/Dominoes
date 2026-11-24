@@ -87,6 +87,7 @@ export const ACHIEVEMENTS = [
   { id: 'godsAngry', cat: 4, name: 'The Domino Gods Are Angry', desc: 'Lose 5 games in a row', tiers: T500 },
   { id: 'cheap', cat: 4, name: 'Cheap Bastard', desc: 'Lose a hand holding only the double-blank', tiers: T500 },
   { id: 'howBoutNo', cat: 4, name: "How 'Bout No!", desc: 'Win a hand while an opponent holds only the double-blank', tiers: T500 },
+  { id: 'badPenny', cat: 4, name: 'A Bad Penny', desc: 'Get dealt the double-six right after being stuck with it at the end of the last hand', tiers: T250 },
   { id: 'devilsWork', cat: 4, name: "The Devil's Work", desc: 'End a hand holding just the 6-6 and 6-0', tiers: T500 },
 
   // ---- Long-Term / Dedication ----
@@ -163,6 +164,8 @@ export class GameTracker {
         this.g.hands++;
         const dealt = s.players[me].hand.filter((t) => t[0] === t[1]).length;
         if (dealt >= 3) this.bump('dirtyDeal');
+        if (this.stuckWith66 && s.players[me].hand.some((t) => t[0] === 6 && t[1] === 6)) this.bump('badPenny');
+        this.stuckWith66 = false;
         break;
       }
       case 'draw': {
@@ -237,6 +240,7 @@ export class GameTracker {
       this.g.handsLost++;
       if (mine.length === 1 && mine[0][0] === 0 && mine[0][1] === 0) this.bump('cheap');
     }
+    this.stuckWith66 = mine.some((t) => t[0] === 6 && t[1] === 6);
     if (mine.length >= 10) this.bump('hoarder');
     if (mine.filter(isDbl).length >= 3) this.bump('doubleDisaster');
     if (mine.length >= 3 && mine.every(isDbl)) this.bump('doubledUpOn');

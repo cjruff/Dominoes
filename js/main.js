@@ -124,6 +124,7 @@ $('btnStats').onclick = () => showStats();
 $('btnAbout').onclick = () => showAbout();
 $('btnSettings').onclick = () => showSettings();
 $('btnAch').onclick = () => showAchievements();
+$('btnRules').onclick = () => showRules();
 
 function showSettings() {
   const isPreset = TABLE_PRESETS.some((p) => p.color.toLowerCase() === display.table.toLowerCase());
@@ -756,7 +757,7 @@ function showMenu() {
   showOverlay(`<h2>Menu</h2>
     <div class="buttons" style="flex-wrap:wrap">
       <button class="btn primary" id="mResume">Resume</button>
-      <button class="btn" id="mRules">How to play</button>
+      <button class="btn" id="mRules">Rules</button>
       <button class="btn" id="mSettings">Settings</button>
       <button class="btn" id="mAch">Achievements</button>
       <button class="btn" id="mStats">Stats</button>
@@ -774,12 +775,17 @@ function showMenu() {
 $('btnMenu').onclick = showMenu;
 
 function showRules() {
-  showOverlay(`<h2>How to play</h2><div class="rules">
-    <h3>Every game</h3><p>Match a tile to an open end of the line. On the first hand, and after a blocked hand where everyone passed, the highest double leads. Otherwise the last hand's winner leads with anything. Tap a glowing tile to play it — if it fits in more than one place, tap the highlighted spot.</p>
-    <h3>Fives</h3><p>After you play, add up the open ends. A double at an end counts both halves. If the total is a multiple of 5 you score it. Stuck? Draw until you can play. Going out scores everyone else's pips, rounded to the nearest 5. A blocked hand goes to the lowest count.</p>
-    <p><b>First spinner only:</b> the first double played can be played off all four sides (once both its long sides are covered). <b>Every double spins:</b> every double opens its two sides once the line runs past it.</p>
-    <h3>Block</h3><p>No boneyard. If you can't play, you pass. First out — or the lowest count when everyone is stuck — scores all the other players' pips.</p>
-    <h3>Draw</h3><p>Like Block, but you draw from the boneyard until you can play.</p>
+  showOverlay(`<h2>Rules</h2><div class="rules">
+    <h3>The deal</h3><p>Moe's Dominoes uses a double-six set (28 tiles). With 2 players each gets 7 tiles; with 3 or 4 players, 5 each. The rest are the boneyard. Everyone plays for themselves.</p>
+    <h3>Who leads</h3><p>On the first hand, the player with the highest double leads and must play it (if nobody has a double, the heaviest tile leads). After that, the winner of the last hand leads with any tile — the player who went out, or the lowest count when the hand was blocked. If a blocked hand ties for the lowest count, the highest double leads again.</p>
+    <h3>Playing</h3><p>Turns go clockwise. Match one end of your tile to an open end of the line. Doubles are placed crosswise. Tap a tile to see where it fits, then tap the spot, double-tap the tile, or drag it there.</p>
+    <h3>Ending a hand</h3><p><b>Going out (domino):</b> play your last tile and you score the pips left in everyone else's hands.<br>
+      <b>Blocked:</b> when nobody can play, the lowest count wins the hand and scores the <i>difference</i>: everyone else's pips minus their own. Example: you hold 8, your opponents hold 28 between them — you score 20. A tie for lowest scores nothing.</p>
+    <h3>Fives</h3><p>After each play, add up the open ends of the line. A double at an end counts both halves. If the total is a multiple of 5 (5, 10, 15…) you score it right away. Stuck? Draw from the boneyard until you can play; pass only when it's empty. End-of-hand points are rounded to the nearest 5. Reach the target on a scoring play and you win on the spot.</p>
+    <p><b>First spinner only:</b> the first double played becomes the spinner — once both its long sides are covered, you can also play off its two short sides. <b>Every double spins:</b> every double works that way.</p>
+    <h3>Block</h3><p>No drawing. If you can't play, you pass.</p>
+    <h3>Draw</h3><p>Like Block, but when you can't play you draw from the boneyard until you can. Pass only when the boneyard is empty.</p>
+    <h3>Winning</h3><p>The first player to reach the target score (chosen at setup) wins.</p>
   </div><div class="buttons"><button class="btn primary" id="rBack">Back</button></div>`);
   $('rBack').onclick = () => (game ? showMenu() : hideOverlay());
 }

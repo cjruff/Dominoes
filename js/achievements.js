@@ -132,8 +132,12 @@ export function tiersReached(a, value) {
 // Tracking one game
 // =====================================================================
 export class GameTracker {
-  constructor(game, meIdx) {
+  constructor(game, meIdx, store = globalThis.localStorage) {
     this.me = meIdx;
+    // What you'd already earned before this game, for announcing medals as they happen
+    this.base = loadRecord(store);
+    this.announced = {};
+    for (const a of ACHIEVEMENTS) this.announced[a.id] = tiersReached(a, progressOf(this.base, a));
     this.mode = game.s.mode;
     this.n = game.s.players.length;
     this.counts = {};
@@ -250,6 +254,20 @@ export class GameTracker {
     if (ev.handPoints[me] >= 50) this.bump('scoreboardShock');
     this.deficit(game);
   }
+}
+
+/** Medals reached so far this game (counted achievements), not yet announced. */
+export function liveMedals(tracker, game) {
+  const out = [];
+  const mode = game.s.mode;
+  for (const [id, n] of Object.entries(tracker.counts)) {
+    const a = BY_ID[id];
+    if (!a || a.life || (a.fives && mode !== 'fives') || (a.notBlock && mode === 'block')) continue;
+    const reached = tiersReached(a, (tracker.base.counts[id] || 0) + n);
+    for (let t = tracker.announced[id]; t < reached; t++) out.push({ a, tier: t, medal: medalFor(a, t) });
+    tracker.announced[id] = Math.max(tracker.announced[id], reached);
+  }
+  return out;
 }
 
 // =====================================================================

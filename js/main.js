@@ -8,7 +8,7 @@ import { layoutBoard, previewPlacement } from './layout.js';
 import { el, addDefs, drawTile, tileSvg, THEMES } from './render.js';
 import { tileId, handPips, makeRng } from './tiles.js';
 import { loadDisplay, saveDisplay, applyDisplay, tileTheme, TABLE_PRESETS } from './settings.js';
-import { GameTracker, commitGame, loadRecord, resetRecord, ACHIEVEMENTS, CATEGORIES, MEDALS, MEDAL_NAMES,
+import { GameTracker, commitGame, liveMedals, loadRecord, resetRecord, ACHIEVEMENTS, CATEGORIES, MEDALS, MEDAL_NAMES,
   medalImg, medalFor, progressOf, tiersReached, totalMedals } from './achievements.js';
 import { lineFor } from './personalities.js';
 import { BUILT_IN, allPlayers, byId, createPlayer } from './roster.js';
@@ -252,7 +252,7 @@ function humanPlay(move) {
 
 function onEvent(ev, g) {
   const s = g.s;
-  if (tracker) tracker.onEvent(ev, g);
+  if (tracker) { tracker.onEvent(ev, g); for (const m of liveMedals(tracker, g)) flashMedal(m); }
   if (ev.type === 'draw') turnDraws[ev.player] = (turnDraws[ev.player] || 0) + 1;
   if (ev.type === 'play' || ev.type === 'pass') {
     const d = turnDraws[ev.player] || 0;
@@ -332,6 +332,7 @@ function renderDocks() {
 
   const ends = s.mode === 'fives' && s.board.nodes.length ? ` · Ends <b>${endsTotal(s.board)}</b>` : '';
   const bone = MODES[s.mode].draws ? ` · Boneyard <b>${s.boneyard.length}</b>` : '';
+  $('handBadge').textContent = `Hand ${s.handNo}`;
   $('info').innerHTML = `${MODES[s.mode].name}${s.mode === 'fives' && s.spinnerRule === 'all' ? ' (all spin)' : ''} to ${s.target} · Hand ${s.handNo}${ends}${bone}`;
   $('me').className = s.turn === me.idx && !s.handOver ? 'turn' : '';
   $('me').innerHTML = `${avatarHtml(me)}<div class="who"><span class="nm"></span><span class="sc">${me.score}</span></div>`;
@@ -433,9 +434,11 @@ function placeSideDocks(bb, vx, vy, vw) {
 function pointsIf(m) {
   const sim = game.clone();
   sim.onEvent = null;
-  const before = sim.current.score;
+  // Only the points for the play itself — not the pips collected if it ends the hand.
+  let pts = 0;
+  sim.onEvent = (ev) => { if (ev.type === 'play') pts = ev.points || 0; };
   try { sim.play(m); } catch { return 0; }
-  return sim.s.players[game.s.turn].score - before;
+  return pts;
 }
 
 function renderHand() {
@@ -630,8 +633,8 @@ function fillMiniHands(r) {
 function handHeadline(r) {
   const s = game.s;
   const w = r.winner != null ? s.players[r.winner] : null;
-  if (r.reason === 'domino') return `${w.human ? 'You' : esc(w.name)} dominoed${r.award ? ` for ${r.award}` : ''}!`;
-  if (r.reason === 'blocked') return w ? `Blocked — ${w.human ? 'you have' : esc(w.name) + ' has'} the low count (+${r.award})` : 'Blocked — tie for low count, no points';
+  if (r.reason === 'domino') return `${w.human ? 'You' : esc(w.name)} dominoed${r.award ? ` for <b class="gold">${r.award}</b>` : ''}!`;
+  if (r.reason === 'blocked') return w ? `Blocked — ${w.human ? 'you have' : esc(w.name) + ' has'} the low count (<b class="gold">+${r.award}</b>)` : 'Blocked — tie for low count, no points';
   return 'Hand over';
 }
 
@@ -683,6 +686,18 @@ function showGameOver() {
   $('btnSt').onclick = () => showStats(true);
 }
 
+
+// ---------- Medal flash (as each one is earned) ----------
+function flashMedal(m) {
+  let box = document.getElementById('medalPops');
+  if (!box) { box = document.createElement('div'); box.id = 'medalPops'; document.body.appendChild(box); }
+  const d = document.createElement('div');
+  d.className = 'medal-pop';
+  d.innerHTML = `<img src="${medalImg(m.medal)}" alt=""><div><small>${MEDAL_NAMES[m.medal]} medal</small><b>${esc(m.a.name)}</b></div>`;
+  box.appendChild(d);
+  setTimeout(() => d.classList.add('out'), 3000);
+  setTimeout(() => d.remove(), 3500);
+}
 
 // ---------- Speech bubbles ----------
 function say(idx, event) {

@@ -358,3 +358,27 @@ select:disabled { opacity: .75; }
 .stats-table tr.total td { border-top: 2px solid rgba(255,255,255,.3); font-weight: 700; color: var(--gold); }
 .who-cell { display: inline-flex; align-items: center; gap: 8px; vertical-align: middle; }
 .who-cell .av { width: 28px; height: 28px; font-size: 12px; }
+
+.gold { color: var(--gold); }
+#handBadge {
+  position: absolute; right: 14px; bottom: 6px; z-index: 2; pointer-events: none;
+  font-family: Georgia, serif; font-weight: 700; font-size: clamp(20px, 3vw, 30px); color: var(--gold);
+  text-shadow: 0 2px 4px rgba(0,0,0,.6); opacity: .9;
+}
+@media (max-height: 480px) { #handBadge { font-size: 18px; bottom: 4px; right: 10px; } }
+
+/* Medal flash */
+#medalPops { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 900; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
+.medal-pop {
+  display: flex; align-items: center; gap: 12px; padding: 8px 18px 8px 10px; border-radius: 40px;
+  background: rgba(10, 20, 14, .92); border: 2px solid var(--gold); box-shadow: 0 10px 30px rgba(0,0,0,.6);
+  animation: medalIn .5s cubic-bezier(.2,1.5,.4,1); transition: opacity .5s, transform .5s;
+}
+.medal-pop img { width: 54px; height: 54px; animation: medalSpin .9s ease-out; }
+.medal-pop div { display: flex; flex-direction: column; line-height: 1.2; }
+.medal-pop small { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--gold); }
+.medal-pop b { font-size: 17px; }
+.medal-pop.out { opacity: 0; transform: translateY(-12px); }
+@keyframes medalIn { from { opacity: 0; transform: scale(.5); } to { opacity: 1; transform: none; } }
+@keyframes medalSpin { from { transform: rotateY(180deg) scale(.6); } to { transform: none; } }
+@media (max-height: 480px) { #medalPops { top: 46px; } .medal-pop img { width: 40px; height: 40px; } }

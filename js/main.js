@@ -134,7 +134,7 @@ function showSettings() {
     <button class="swatch tile-opt ${display.tiles === t.id ? 'on' : ''}" data-tiles="${t.id}">
       <span class="tiles" data-preview="${t.id}"></span>${t.name}</button>`).join('');
   showOverlay(`<h2>Settings</h2>
-    <div class="set-section"><h3>Table colour</h3><div class="swatches">${tableSw}
+    <div class="set-section"><h3>Table Color</h3><div class="swatches">${tableSw}
       <label class="swatch ${isPreset ? '' : 'on'}" id="customSw"><input type="color" id="customColor" value="${display.table}">Custom</label>
     </div></div>
     <div class="set-section"><h3>Tiles</h3><div class="swatches">${tileSw}</div></div>
@@ -775,7 +775,7 @@ $('btnMenu').onclick = showMenu;
 
 function showRules() {
   showOverlay(`<h2>How to play</h2><div class="rules">
-    <h3>Every game</h3><p>Match a tile to an open end of the line. On the first hand the highest double leads; after that, the last hand's winner leads with anything. Tap a glowing tile to play it — if it fits in more than one place, tap the highlighted spot.</p>
+    <h3>Every game</h3><p>Match a tile to an open end of the line. On the first hand, and after a blocked hand where everyone passed, the highest double leads. Otherwise the last hand's winner leads with anything. Tap a glowing tile to play it — if it fits in more than one place, tap the highlighted spot.</p>
     <h3>Fives</h3><p>After you play, add up the open ends. A double at an end counts both halves. If the total is a multiple of 5 you score it. Stuck? Draw until you can play. Going out scores everyone else's pips, rounded to the nearest 5. A blocked hand goes to the lowest count.</p>
     <p><b>First spinner only:</b> the first double played can be played off all four sides (once both its long sides are covered). <b>Every double spins:</b> every double opens its two sides once the line runs past it.</p>
     <h3>Block</h3><p>No boneyard. If you can't play, you pass. First out — or the lowest count when everyone is stuck — scores all the other players' pips.</p>

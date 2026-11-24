@@ -1,4 +1,4 @@
-// Moe's Dominoes — display settings (table colour, tile style)
+// Moe's Dominoes — display settings (table color, tile style)
 // Code: © Corey J Ruff
 
 import { THEMES } from './render.js';
@@ -37,7 +37,7 @@ function hexToHsl(hex) {
 }
 const hsl = (h, s, l) => `hsl(${h.toFixed(0)} ${Math.max(0, Math.min(100, s)).toFixed(0)}% ${Math.max(0, Math.min(100, l)).toFixed(0)}%)`;
 
-/** Apply the table colour to the page (CSS variables used by the felt). */
+/** Apply the table color to the page (CSS variables used by the felt). */
 export function applyDisplay(d) {
   const [h, s, l] = hexToHsl(d.table);
   const root = document.documentElement.style;

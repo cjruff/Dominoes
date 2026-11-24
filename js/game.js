@@ -98,7 +98,8 @@ export class Game {
     s.handPoints = s.players.map(() => 0);
     s.mustLead = null;
 
-    if (s.handNo === 1 || s.lastHandWinner === null) {
+    // First hand, or the last hand was blocked (everyone passed): highest double leads.
+    if (s.handNo === 1 || s.lastHandWinner === null || s.lastHandBlocked) {
       // Highest double leads (and must play it); with no doubles out, the heaviest tile.
       let best = null;
       for (const p of s.players) for (const t of p.hand) {
@@ -224,6 +225,7 @@ export class Game {
     }
     s.handOver = true;
     s.lastHandWinner = winner;
+    s.lastHandBlocked = reason === 'blocked';
     s.handResult = { reason, winner, award, counts, hands: s.players.map((p) => p.hand.map((t) => [...t])),
       handPoints: [...s.handPoints], handNo: s.handNo };
     s.history.push({ ...s.handResult, scores: s.players.map((p) => p.score) });

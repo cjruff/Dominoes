@@ -809,6 +809,73 @@ function showRules() {
   $('rBack').onclick = () => (game ? showMenu() : hideOverlay());
 }
 
+// Download every stats table (all game types) as a CSV file for Excel / Google Sheets.
+function exportStats() {
+  const st = loadStats();
+  const q = (v) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
+  const pct = (w, n) => (n ? Math.round((100 * w) / n) : '');
+  const rows = [['Game type', 'Table', 'Level / Player', 'Played', 'Won', 'Lost', 'Win %', 'Avg points', 'Hands won', 'Hands played',
+    'Dominoes', 'Best play', 'Best margin', 'They won', 'Finished ahead', 'Current streak', 'Best streak']];
+  for (const opt of [{ key: 'all', name: 'All Games' }, ...VARIANTS]) {
+    const v = viewStats(st, opt.key);
+    const line = (label, L) => rows.push([opt.name, 'By difficulty', label, L.played, L.won, L.played - L.won, pct(L.won, L.played),
+      L.played ? Math.round(L.points / L.played) : '', L.handsWon, L.hands, L.dominoes, L.bestPlay || '', L.bestMargin || '', '', '',
+      label === 'Total' ? v.streak.cur : '', label === 'Total' ? v.streak.best : '']);
+    for (const lv of LEVEL_ORDER) if (v.byLevel[lv]) line(LEVEL_NAMES[lv], v.byLevel[lv]);
+    line('Total', v.total);
+    for (const [id, r] of Object.entries(v.vs)) {
+      const who = byId(id);
+      rows.push([opt.name, 'Vs. players', who ? who.name : r.name, r.played, r.won, '', pct(r.won, r.played), '', '', '', '', '', '', r.theyWon, r.ahead, '', '']);
+    }
+  }
+  const csv = '﻿' + rows.map((r) => r.map(q).join(',')).join('\r\n');
+  download(`Moes-Dominoes-stats-${new Date().toISOString().slice(0, 10)}.csv`, csv, 'text/csv;charset=utf-8');
+}
+
+// ---------- Backup / import (stats, medals, players, settings) ----------
+const BACKUP_PREFIX = 'moesDominoes.';
+function download(name, text, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+function backupAll() {
+  const data = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k.startsWith(BACKUP_PREFIX)) data[k] = localStorage.getItem(k);
+  }
+  const file = { app: "Moe's Dominoes", kind: 'backup', version: 1, saved: new Date().toISOString(), data };
+  download(`Moes-Dominoes-backup-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(file, null, 1), 'application/json');
+}
+
+function restoreAll() {
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = '.json,application/json';
+  inp.onchange = async () => {
+    const f = inp.files && inp.files[0];
+    if (!f) return;
+    let file;
+    try { file = JSON.parse(await f.text()); } catch { return alert('That file isn’t a Moe’s Dominoes backup.'); }
+    if (!file || file.kind !== 'backup' || !file.data || typeof file.data !== 'object') return alert('That file isn’t a Moe’s Dominoes backup.');
+    const keys = Object.keys(file.data).filter((k) => k.startsWith(BACKUP_PREFIX) && typeof file.data[k] === 'string');
+    if (!keys.length) return alert('That backup is empty.');
+    const when = file.saved ? new Date(file.saved).toLocaleString() : 'an unknown date';
+    if (!confirm(`Replace the stats, medals, players and settings on this device with the backup from ${when}?${game && !game.s.gameOver ? ' The game in progress will end.' : ''}`)) return;
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k.startsWith(BACKUP_PREFIX)) localStorage.removeItem(k);
+    }
+    for (const k of keys) localStorage.setItem(k, file.data[k]);
+    location.reload();
+  };
+  inp.click();
+}
+
 let statsView = 'all';
 function showStats(fromGame = false) {
   const st = loadStats();
@@ -847,7 +914,12 @@ function showStats(fromGame = false) {
     <h3 class="st-h">Vs. players</h3>
     <div class="table-scroll"><table class="res-table stats-table"><tr><th>Player</th><th class="num">Games together</th><th class="num">You won</th>
       <th class="num">They won</th><th class="num">Your win %</th><th class="num">Finished ahead</th></tr>${vsRows}</table></div>
-    <div class="buttons"><button class="btn primary" id="sBack">Back</button><button class="btn" id="sReset">Reset stats</button></div>`);
+    <div class="buttons"><button class="btn primary" id="sBack">Back</button><button class="btn" id="sExport">Export stats</button>
+      <button class="btn" id="sBackup">Back up</button><button class="btn" id="sRestore">Import backup</button><button class="btn" id="sReset">Reset stats</button></div>
+    <p class="st-note">Export stats makes a spreadsheet (CSV). Back up saves your stats, medals, players and settings in one file that Import backup can load on any device.</p>`);
+  $('sExport').onclick = exportStats;
+  $('sBackup').onclick = backupAll;
+  $('sRestore').onclick = restoreAll;
   for (const b of $('panel').querySelectorAll('.stats-seg button')) b.onclick = () => { statsView = b.dataset.v; showStats(fromGame); };
   $('sBack').onclick = () => (fromGame && game && !game.s.gameOver ? showMenu() : game && game.s.gameOver ? showGameOver() : hideOverlay());
   $('sReset').onclick = () => { if (confirm('Erase all stats?')) { resetStats(); showStats(fromGame); } };

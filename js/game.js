@@ -26,17 +26,24 @@ export function handSize(nPlayers) {
  * opts: { mode, spinnerRule, players:[{name, human, level, personality}], target, seed }
  */
 export class Game {
-  constructor(opts, rng) {
+  /**
+   * rng     : used only by computer players' decisions
+   * dealRng : used only for shuffling. Kept separate so nothing a player does —
+   *           or how strong the computer players are — can affect which tiles are dealt.
+   */
+  constructor(opts, rng, dealRng) {
     if (opts === undefined) return; // used by clone()
     const mode = opts.mode || 'fives';
     this.rng = rng || makeRng(opts.seed ?? Date.now());
+    this.dealRng = dealRng || makeRng(((opts.dealSeed ?? opts.seed ?? Date.now()) ^ 0x9e3779b9) >>> 0);
     this.s = {
       mode,
       spinnerRule: mode === 'fives' ? (opts.spinnerRule || 'first') : 'none',
       target: opts.target || MODES[mode].defaultTarget,
       players: opts.players.map((p, i) => ({
         idx: i, name: p.name, human: !!p.human, level: p.level || 'medium',
-        personality: p.personality || null, portrait: p.portrait || null, score: 0, hand: [],
+        personality: p.personality || null, portrait: p.portrait || null, rosterId: p.rosterId || null,
+        loseImage: p.loseImage || null, score: 0, hand: [],
       })),
       handNo: 0,
       board: newBoard('none'),
@@ -62,6 +69,7 @@ export class Game {
     const g = new Game();
     g.s = JSON.parse(JSON.stringify(this.s));
     g.rng = this.rng;
+    g.dealRng = this.dealRng;
     return g;
   }
 
@@ -77,7 +85,7 @@ export class Game {
     const n = s.players.length;
     s.handNo++;
     s.board = newBoard(s.spinnerRule);
-    const set = this.rng.shuffle(makeSet());
+    const set = this.dealRng.shuffle(makeSet());
     const size = handSize(n);
     for (const p of s.players) p.hand = set.splice(0, size);
     s.boneyard = set;

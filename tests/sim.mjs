@@ -96,5 +96,24 @@ for (const mode of ['fives', 'block', 'draw']) {
   if (endsTotal(b) !== 5) fail(`expected 5, got ${endsTotal(b)}`);
 }
 
+// Deals must not depend on who is playing or how well: same deal seed, different
+// levels → identical tiles dealt every hand, for as long as both games last.
+{
+  for (let seed = 1; seed <= 200; seed++) {
+    const deals = (level) => {
+      const g = new Game({ mode: 'draw', players: [{ name: 'a', level }, { name: 'b', level }, { name: 'c', level }], dealSeed: seed }, makeRng(seed * 7 + level.length));
+      const out = [];
+      for (let h = 0; h < 4 && !g.s.gameOver; h++) {
+        g.startHand();
+        out.push(JSON.stringify([g.s.players.map((p) => p.hand), g.s.boneyard]));
+        while (!g.s.handOver) { if (g.legalMovesFor().length) g.play(chooseMove(g)); else if (g.canDraw()) g.draw(); else g.pass(); }
+      }
+      return out;
+    };
+    const a = deals('beginner'), b = deals('expert');
+    for (let h = 0; h < Math.min(a.length, b.length); h++) if (a[h] !== b[h]) { fail(`deal ${h} differs by level, seed ${seed}`); break; }
+  }
+}
+
 console.log(`\n${failures ? failures + ' FAILURES' : 'All checks passed'} in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 process.exit(failures ? 1 : 0);

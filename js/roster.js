@@ -12,6 +12,8 @@ export const BUILT_IN = [
   { id: 'nala', name: 'Nala', face: 'assets/players/nala-face.webp', img: 'assets/players/nala.webp' },
   { id: 'rhys', name: 'Rhys', face: 'assets/players/rhys-face.webp', img: 'assets/players/rhys.webp' },
   { id: 'wally', name: 'Wally', face: 'assets/players/wally-face.webp', img: 'assets/players/wally.webp' },
+  // Corey only plays at Expert. Beat him… or see the picture.
+  { id: 'corey', name: 'Corey', face: 'assets/players/corey-face.webp', img: 'assets/players/corey.webp', onlyLevel: 'expert', loseImage: 'assets/players/corey-wins.webp' },
 ];
 
 export function loadCustom() {

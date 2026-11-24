@@ -107,6 +107,7 @@ function renderCpuRows() {
     const lv = document.createElement('select');
     for (const l of LEVELS) { const o = document.createElement('option'); o.value = l; o.textContent = LEVEL_NAMES[l]; lv.appendChild(o); }
     lv.value = c.level; lv.onchange = () => { c.level = lv.value; };
+    if (who.onlyLevel) { lv.value = who.onlyLevel; lv.disabled = true; lv.title = `${who.name} only plays at ${LEVEL_NAMES[who.onlyLevel]}`; }
     row.append(pick, lv); list.appendChild(row);
   }
 }
@@ -166,9 +167,11 @@ function startGame() {
   const players = [{ name: setup.name || 'You', human: true }];
   for (let i = 0; i < setup.players - 1; i++) {
     const who = byId(setup.cpus[i].id) || BUILT_IN[i];
-    players.push({ name: who.name, level: setup.cpus[i].level, portrait: who.face, rosterId: who.id });
+    players.push({ name: who.name, level: who.onlyLevel || setup.cpus[i].level, portrait: who.face, rosterId: who.id, loseImage: who.loseImage || null });
   }
-  game = new Game({ mode: setup.mode, spinnerRule: setup.spinnerRule, players, target: setup.target }, makeRng(Date.now()));
+  // Two independent, unpredictable seeds: one for shuffling, one for the computer players' thinking.
+  const seed = () => crypto.getRandomValues(new Uint32Array(1))[0];
+  game = new Game({ mode: setup.mode, spinnerRule: setup.spinnerRule, players, target: setup.target }, makeRng(seed()), makeRng(seed()));
   game.onEvent = onEvent;
   recorded = false;
   allPlays = [];
@@ -253,6 +256,7 @@ function onEvent(ev, g) {
       break;
     case 'pass':
       passed.add(ev.player);
+      if (!who.human) toast(`${nm} passes`);
       status(`${nm} ${who.human ? 'pass' : 'passes'}.`);
       break;
     default: break;
@@ -345,6 +349,7 @@ function renderBoard() {
   const cx = (bb.x0 + bb.x1) / 2, cy = (bb.y0 + bb.y1) / 2;
   svg.setAttribute('viewBox', `${cx - w / 2} ${cy - h / 2} ${w} ${h}`);
   svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+  placeSideDocks(bb, cx - w / 2, cy - h / 2, w);
 
   for (const t of lay.tiles) {
     drawTile(svg, t.halves, { theme, spinner: t.spinner && s.spinnerRule !== 'none', className: t.id >= lastNodeCount ? 'fresh' : '' });
@@ -365,6 +370,42 @@ function renderBoard() {
     grp.addEventListener('click', () => humanPlay(g.m));
     grp.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') humanPlay(g.m); });
   });
+}
+
+// Phones/tablets: slide the left and right players in next to the tiles (away from
+// the camera notch when held sideways). As the line grows they move back out, but
+// never past the screen's safe area.
+const isTouch = window.matchMedia('(pointer: coarse)');
+let safeProbe = null;
+function safeArea() {
+  // CSS env() values can't be read directly, so measure them on a hidden element.
+  if (!safeProbe) {
+    safeProbe = document.createElement('div');
+    safeProbe.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)';
+    document.body.appendChild(safeProbe);
+  }
+  const cs = getComputedStyle(safeProbe);
+  return { safeL: parseFloat(cs.paddingLeft) || 0, safeR: parseFloat(cs.paddingRight) || 0 };
+}
+function placeSideDocks(bb, vx, vy, vw) {
+  const table = $('table');
+  const docks = table.querySelectorAll('.dock.left, .dock.right');
+  if (!isTouch.matches) { for (const d of docks) d.style.left = d.style.right = ''; return; }
+  const tr = table.getBoundingClientRect(), sr = $('board').getBoundingClientRect();
+  const scale = sr.width / vw;
+  const tilesL = sr.left - tr.left + (bb.x0 - vx) * scale;
+  const tilesR = sr.left - tr.left + (bb.x1 - vx) * scale;
+  const { safeL, safeR } = safeArea();
+  for (const d of docks) {
+    const dw = d.offsetWidth, gap = 14;
+    if (d.classList.contains('left')) {
+      d.style.right = '';
+      d.style.left = `${Math.max(safeL + 6, Math.min(tr.width / 2 - dw - gap, tilesL - dw - gap))}px`;
+    } else {
+      d.style.left = '';
+      d.style.right = `${Math.max(safeR + 6, Math.min(tr.width / 2 - dw - gap, tr.width - tilesR - dw - gap))}px`;
+    }
+  }
 }
 
 function pointsIf(m) {
@@ -504,12 +545,18 @@ function onHandTile(t, moves) {
     shake(t);
     return;
   }
-  // Only one place it can go (or same spot either way) → just play it.
-  if (mine.length === 1) return humanPlay(mine[0]);
+  // Double-tap plays a tile that fits in only one place; one tap just picks it up
+  // and shows where it can go (tap a spot, or drag, to place it).
+  const now = performance.now();
+  const isDouble = lastTap.id === id && now - lastTap.at < 450;
+  lastTap = { id, at: now };
+  if (isDouble && mine.length === 1) { lastTap = { id: null, at: 0 }; return humanPlay(mine[0]); }
+  if (isDouble) { selected = id; status('It fits in more than one place — tap the spot you want.'); return render(); }
   selected = selected === id ? null : id;
-  status(selected ? 'Tap or drag to a highlighted spot.' : 'Your turn.');
+  status(selected ? (mine.length === 1 ? 'Double-tap the tile, tap the spot, or drag it there.' : 'Tap a highlighted spot, or drag it there.') : 'Your turn.');
   render();
 }
+let lastTap = { id: null, at: 0 };
 
 $('btnDraw').onclick = () => {
   if (!myTurnNow() || !game.canDraw()) return;
@@ -590,15 +637,32 @@ function showGameOver() {
       scores: s.players.map((p) => p.score), hands: s.handNo, dominoes: doms, bestPlay: best, handsWon, target: s.target });
     allPlays = [];
   }
+  const human = s.players.find((p) => p.human);
+  const corey = s.players.find((p) => p.loseImage);
+  if (corey && s.winner !== human.idx) showGloat(corey);
   const head = s.winner === null ? 'Game over' : w.human ? 'You win! 🎉' : `${esc(w.name)} wins`;
   showOverlay(`<h2>${head}</h2><p>${r.reason === 'reachedTarget' ? 'Reached the target on a scoring play.' : handHeadline(r)}</p>${resultTable(r)}
-    <div class="buttons"><button class="btn primary" id="btnAgain">Play again</button><button class="btn" id="btnSetup">Setup</button><button class="btn" id="btnSt">Stats</button></div>`);
+    <div class="buttons"><button class="btn primary" id="btnAgain">Play again</button><button class="btn" id="btnSt">Stats</button></div>`);
   fillMiniHands(r);
-  $('btnAgain').onclick = () => startGame();
-  $('btnSetup').onclick = () => toSetup();
+  // Back to the main screen (your last choices are kept) so you can change the game or opponents.
+  $('btnAgain').onclick = () => { document.getElementById('gloat')?.remove(); toSetup(); };
   $('btnSt').onclick = () => showStats(true);
 }
 
+
+// Shown over everything when you lose a game with Corey at the table. Tap to close.
+function showGloat(p) {
+  const img = new Image();
+  img.onload = () => {
+    const d = document.createElement('div');
+    d.id = 'gloat';
+    d.appendChild(img);
+    const cap = document.createElement('p'); cap.textContent = `${p.name} wins. Tap to continue.`; d.appendChild(cap);
+    d.onclick = () => d.remove();
+    document.body.appendChild(d);
+  };
+  img.src = p.loseImage; // silently skipped until the picture is added
+}
 
 function toSetup() {
   hideOverlay();

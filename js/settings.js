@@ -6,8 +6,8 @@ import { THEMES } from './render.js';
 const KEY = 'moesDominoes.display.v1';
 
 export const TABLE_PRESETS = [
-  { id: 'green', name: 'Classic green', color: '#17573b' },
-  { id: 'blue', name: 'Casino blue', color: '#1b4a7a' },
+  { id: 'green', name: 'Classic Green', color: '#17573b' },
+  { id: 'blue', name: 'Casino Blue', color: '#1b4a7a' },
   { id: 'burgundy', name: 'Burgundy', color: '#6b1f2c' },
   { id: 'slate', name: 'Slate', color: '#3a4249' },
 ];

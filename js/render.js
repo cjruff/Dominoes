@@ -8,7 +8,7 @@ const NS = 'http://www.w3.org/2000/svg';
 
 export const THEMES = {
   classic: {
-    id: 'classic', name: 'Classic white', face: '#fbfaf4', face2: '#e9e6da', edge: '#2a2a2a', divider: '#6b6b6b',
+    id: 'classic', name: 'Classic White', face: '#fbfaf4', face2: '#e9e6da', edge: '#2a2a2a', divider: '#6b6b6b',
     pip: '#111111', pipColors: null, back: '#7b1e1e', backPattern: '#a33a3a', spinnerMark: '#c9a227',
   },
   black: {
@@ -16,7 +16,7 @@ export const THEMES = {
     pip: '#f6f6f2', pipColors: null, back: '#7b1e1e', backPattern: '#a33a3a', spinnerMark: '#d8b04a',
   },
   blue: {
-    id: 'blue', name: 'Dark blue', face: '#23427a', face2: '#132a55', edge: '#0a1733', divider: '#9fb3d9',
+    id: 'blue', name: 'Dark Blue', face: '#23427a', face2: '#132a55', edge: '#0a1733', divider: '#9fb3d9',
     pip: '#ffffff', pipColors: null, back: '#7b1e1e', backPattern: '#a33a3a', spinnerMark: '#d8b04a',
   },
 };

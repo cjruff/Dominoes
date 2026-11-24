@@ -8,6 +8,7 @@ import { layoutBoard, previewPlacement } from './layout.js';
 import { el, addDefs, drawTile, tileSvg, THEMES } from './render.js';
 import { tileId, handPips, makeRng } from './tiles.js';
 import { loadDisplay, saveDisplay, applyDisplay, tileTheme, TABLE_PRESETS } from './settings.js';
+import { BUILT_IN, allPlayers, byId, createPlayer } from './roster.js';
 import { loadSetup, saveSetup, loadStats, recordGame, resetStats, variantKey } from './stats.js';
 
 const $ = (id) => document.getElementById(id);
@@ -22,12 +23,16 @@ const MODE_HINTS = {
 };
 const TARGETS = { fives: [61, 100, 150, 200, 250], block: [50, 100, 150, 200], draw: [50, 100, 150, 200] };
 const DEFAULT_CPUS = [
-  { name: 'Moe', level: 'medium' }, { name: 'Lou', level: 'medium' }, { name: 'Dot', level: 'medium' },
+  { id: 'moe', level: 'medium' }, { id: 'eyton', level: 'medium' }, { id: 'nala', level: 'medium' },
 ];
 
 let setup = Object.assign({
   mode: 'fives', spinnerRule: 'first', players: 2, target: 150, name: 'You', cpus: DEFAULT_CPUS,
 }, loadSetup() || {});
+// Older saves used free-typed names; switch them to roster players.
+if (!Array.isArray(setup.cpus) || setup.cpus.some((c) => !c.id || !byId(c.id))) {
+  setup.cpus = DEFAULT_CPUS.map((d, i) => ({ ...d, level: (setup.cpus && setup.cpus[i] && setup.cpus[i].level) || 'medium' }));
+}
 
 let game = null;
 let selected = null;       // tileId of the tile the human picked
@@ -64,17 +69,45 @@ function renderSetup() {
   $('inpName').value = setup.name;
   $('inpName').oninput = (e) => { setup.name = e.target.value.trim() || 'You'; };
 
+  renderCpuRows();
+}
+
+function renderCpuRows() {
   const list = $('cpuList');
   list.innerHTML = '';
+  const roster = allPlayers();
   for (let i = 0; i < setup.players - 1; i++) {
-    const c = setup.cpus[i] || (setup.cpus[i] = { ...DEFAULT_CPUS[i] });
+    let c = setup.cpus[i];
+    if (!c) {
+      // Fill a new seat with the first pet not already at the table
+      const taken = new Set(setup.cpus.slice(0, i).map((x) => x.id));
+      c = setup.cpus[i] = { id: (roster.find((r) => !taken.has(r.id)) || roster[0]).id, level: 'medium' };
+    }
+    const takenByOthers = new Set(setup.cpus.slice(0, setup.players - 1).filter((_, k) => k !== i).map((x) => x.id));
+    const who = byId(c.id) || BUILT_IN[0];
     const row = document.createElement('div'); row.className = 'cpu-row';
-    const inp = document.createElement('input'); inp.value = c.name; inp.maxLength = 14;
-    inp.oninput = () => { c.name = inp.value.trim() || DEFAULT_CPUS[i].name; };
+    row.innerHTML = avatarHtml({ name: who.name, portrait: who.face, idx: i + 1 });
+    const pick = document.createElement('select');
+    for (const r of roster) {
+      const o = document.createElement('option'); o.value = r.id; o.textContent = r.name;
+      if (takenByOthers.has(r.id)) { o.disabled = true; o.textContent += ' (playing)'; }
+      pick.appendChild(o);
+    }
+    const add = document.createElement('option'); add.value = '__new'; add.textContent = '+ Create New'; pick.appendChild(add);
+    pick.value = c.id;
+    pick.onchange = () => {
+      if (pick.value === '__new') {
+        const name = prompt('Name for the new computer player:');
+        const p = createPlayer(name);
+        if (p && !takenByOthers.has(p.id)) c.id = p.id;
+      } else c.id = pick.value;
+      saveSetup(setup);
+      renderCpuRows();
+    };
     const lv = document.createElement('select');
     for (const l of LEVELS) { const o = document.createElement('option'); o.value = l; o.textContent = LEVEL_NAMES[l]; lv.appendChild(o); }
     lv.value = c.level; lv.onchange = () => { c.level = lv.value; };
-    row.append(inp, lv); list.appendChild(row);
+    row.append(pick, lv); list.appendChild(row);
   }
 }
 
@@ -131,7 +164,10 @@ function showAbout() {
 // =====================================================================
 function startGame() {
   const players = [{ name: setup.name || 'You', human: true }];
-  for (let i = 0; i < setup.players - 1; i++) players.push({ name: setup.cpus[i].name, level: setup.cpus[i].level });
+  for (let i = 0; i < setup.players - 1; i++) {
+    const who = byId(setup.cpus[i].id) || BUILT_IN[i];
+    players.push({ name: who.name, level: setup.cpus[i].level, portrait: who.face, rosterId: who.id });
+  }
   game = new Game({ mode: setup.mode, spinnerRule: setup.spinnerRule, players, target: setup.target }, makeRng(Date.now()));
   game.onEvent = onEvent;
   recorded = false;
@@ -238,8 +274,7 @@ const SEAT_SPOTS = { 1: ['top'], 2: ['left', 'right'], 3: ['left', 'top', 'right
 const AVATAR_COLORS = ['#b5523b', '#3b6fb5', '#8a4fb0', '#2f8f6b'];
 
 function avatarHtml(p) {
-  // Session 5 brings chosen portraits; for now Moe gets hers and everyone else an initial.
-  if (/^moe$/i.test(p.name.trim())) return `<span class="av"><img src="assets/moe.webp" alt=""></span>`;
+  if (p.portrait) return `<span class="av"><img src="${p.portrait}" alt=""></span>`;
   const ch = esc((p.name.trim()[0] || '?').toUpperCase());
   return `<span class="av" style="background:${AVATAR_COLORS[p.idx % 4]}">${ch}</span>`;
 }

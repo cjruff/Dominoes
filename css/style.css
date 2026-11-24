@@ -345,3 +345,16 @@ select:disabled { opacity: .75; }
 .pip { width: 12px; height: 12px; border-radius: 50%; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25); }
 .pip.on.bronze { background: #b87333; } .pip.on.silver { background: #c9ccd1; } .pip.on.gold { background: #e2b33c; }
 .pip.on.platinum { background: #9fb4c7; } .pip.on.diamond { background: linear-gradient(135deg, #e8f6ff, #8fd3ff); }
+
+/* ---------- Stats ---------- */
+.panel:has(.stats-table) { width: min(860px, 100%); }
+.stats-seg { flex-wrap: wrap; margin: 8px 0 4px; }
+.stats-seg button { flex: 1 1 auto; font-size: 14px; padding: 8px 10px; }
+.streaks { margin: 8px 0 0; font-size: 14px; } .streaks b { color: var(--gold); }
+.st-h { margin: 14px 0 2px; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--gold); }
+.st-note { font-size: 12px; opacity: .7; margin: 0 0 4px; }
+.table-scroll { overflow-x: auto; }
+.stats-table { font-size: 13px; white-space: nowrap; }
+.stats-table tr.total td { border-top: 2px solid rgba(255,255,255,.3); font-weight: 700; color: var(--gold); }
+.who-cell { display: inline-flex; align-items: center; gap: 8px; vertical-align: middle; }
+.who-cell .av { width: 28px; height: 28px; font-size: 12px; }

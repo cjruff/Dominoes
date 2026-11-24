@@ -12,7 +12,7 @@ import { GameTracker, commitGame, loadRecord, resetRecord, ACHIEVEMENTS, CATEGOR
   medalImg, medalFor, progressOf, tiersReached, totalMedals } from './achievements.js';
 import { lineFor } from './personalities.js';
 import { BUILT_IN, allPlayers, byId, createPlayer } from './roster.js';
-import { loadSetup, saveSetup, loadStats, recordGame, resetStats, variantKey } from './stats.js';
+import { loadSetup, saveSetup, loadStats, recordGame, resetStats, viewStats, VARIANTS, LEVEL_ORDER } from './stats.js';
 
 const $ = (id) => document.getElementById(id);
 let display = loadDisplay();
@@ -784,18 +784,46 @@ function showRules() {
   $('rBack').onclick = () => (game ? showMenu() : hideOverlay());
 }
 
+let statsView = 'all';
 function showStats(fromGame = false) {
   const st = loadStats();
-  const label = { 'fives-first': 'Fives · first spinner', 'fives-all': 'Fives · all spin', block: 'Block', draw: 'Draw' };
-  const rows = Object.keys(label).map((k) => {
-    const t = st.totals[k];
-    if (!t) return `<tr><td>${label[k]}</td><td class="num" colspan="5" style="opacity:.6">not played yet</td></tr>`;
-    return `<tr><td>${label[k]}</td><td class="num">${t.played}</td><td class="num">${t.won}</td><td class="num">${Math.round(100 * t.won / t.played)}%</td><td class="num">${t.bestStreak}</td><td class="num">${k.startsWith('fives') ? t.bestPlay : t.dominoes}</td></tr>`;
+  const v = viewStats(st, statsView);
+  const fives = statsView === 'all' || statsView.startsWith('fives');
+  const pct = (w, n) => (n ? `${Math.round((100 * w) / n)}%` : '–');
+  const dash = (n, x) => (n ? x : '–');
+  const lineRow = (label, L, cls = '') => `<tr class="${cls}"><td>${label}</td>
+    <td class="num">${L.played}</td><td class="num">${L.won}</td><td class="num">${L.played - L.won}</td>
+    <td class="num">${pct(L.won, L.played)}</td><td class="num">${dash(L.played, Math.round(L.points / (L.played || 1)))}</td>
+    <td class="num">${dash(L.hands, `${L.handsWon}/${L.hands}`)}</td><td class="num">${dash(L.played, L.dominoes)}</td>
+    ${fives ? `<td class="num">${dash(L.bestPlay, L.bestPlay)}</td>` : ''}<td class="num">${dash(L.bestMargin, L.bestMargin)}</td></tr>`;
+  const zero = { played: 0, won: 0, points: 0, hands: 0, handsWon: 0, dominoes: 0, bestPlay: 0, bestMargin: 0 };
+  const levelRows = LEVEL_ORDER.map((lv) => lineRow(LEVEL_NAMES[lv], v.byLevel[lv] || zero)).join('') + lineRow('<b>Total</b>', v.total, 'total');
+
+  // Every player you can sit with, plus anyone from older games
+  const roster = allPlayers();
+  const ids = [...roster.map((r) => r.id), ...Object.keys(v.vs).filter((id) => !roster.some((r) => r.id === id))];
+  const vsRows = ids.map((id) => {
+    const r = v.vs[id] || { played: 0, won: 0, theyWon: 0, ahead: 0 };
+    const who = byId(id) || { name: (v.vs[id] && v.vs[id].name) || id, face: null };
+    return `<tr><td><span class="who-cell">${avatarHtml({ name: who.name, portrait: who.face, idx: 1 })}${esc(who.name)}</span></td>
+      <td class="num">${r.played}</td><td class="num">${r.won}</td><td class="num">${r.theyWon}</td>
+      <td class="num">${pct(r.won, r.played)}</td><td class="num">${dash(r.played, `${r.ahead}/${r.played}`)}</td></tr>`;
   }).join('');
+
+  const opts = [{ key: 'all', name: 'All Games' }, ...VARIANTS];
   showOverlay(`<h2>Stats</h2>
-    <table class="res-table"><tr><th>Game</th><th class="num">Played</th><th class="num">Won</th><th class="num">Win %</th><th class="num">Best streak</th><th class="num">Best play / dominoes</th></tr>${rows}</table>
-    <p style="font-size:13px;opacity:.75">Player profiles, per-opponent records and achievements arrive in later sessions.</p>
+    <div class="seg stats-seg">${opts.map((o) => `<button data-v="${o.key}" class="${o.key === statsView ? 'on' : ''}">${o.name}</button>`).join('')}</div>
+    <p class="streaks">Win streak: <b>${v.streak.cur}</b> now · best <b>${v.streak.best}</b></p>
+    <h3 class="st-h">By difficulty</h3>
+    <p class="st-note">A game counts under the toughest computer player at the table.</p>
+    <div class="table-scroll"><table class="res-table stats-table"><tr><th>Level</th><th class="num">Played</th><th class="num">Won</th><th class="num">Lost</th>
+      <th class="num">Win %</th><th class="num">Avg pts</th><th class="num">Hands won</th><th class="num">Dominoes</th>
+      ${fives ? '<th class="num">Best play</th>' : ''}<th class="num">Best margin</th></tr>${levelRows}</table></div>
+    <h3 class="st-h">Vs. players</h3>
+    <div class="table-scroll"><table class="res-table stats-table"><tr><th>Player</th><th class="num">Games together</th><th class="num">You won</th>
+      <th class="num">They won</th><th class="num">Your win %</th><th class="num">Finished ahead</th></tr>${vsRows}</table></div>
     <div class="buttons"><button class="btn primary" id="sBack">Back</button><button class="btn" id="sReset">Reset stats</button></div>`);
+  for (const b of $('panel').querySelectorAll('.stats-seg button')) b.onclick = () => { statsView = b.dataset.v; showStats(fromGame); };
   $('sBack').onclick = () => (fromGame && game && !game.s.gameOver ? showMenu() : game && game.s.gameOver ? showGameOver() : hideOverlay());
   $('sReset').onclick = () => { if (confirm('Erase all stats?')) { resetStats(); showStats(fromGame); } };
 }

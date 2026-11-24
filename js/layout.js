@@ -79,7 +79,11 @@ function placeAt(exit, dbl, inPip, outPip, rects, lim) {
     if (arm.mode === 'band') {
       if (arm.crossStep) want = arm.nextMain;
       else if (exceeds(straight.rect, D, lim)) want = arm.cross;
-    } else if (!arm.turned && exceeds(straight.rect, D, lim)) want = CW[D];
+    } else {
+      // Spiral arms turn clockwise at each edge, each lap a little further out.
+      const t = arm.turns || 0;
+      if (exceeds(straight.rect, D, { HX: lim.HX + 2.5 * t, HY: lim.HY + 2.5 * t })) want = CW[D];
+    }
   }
   const order = dbl ? [D] : [...new Set([want, D, CW[D], CCW[D]])].filter((c) => c !== OPP[D]);
   let chosen = null;
@@ -96,13 +100,13 @@ function placeAt(exit, dbl, inPip, outPip, rects, lim) {
     if (!arm.crossStep && c === arm.cross) next = { ...arm, crossStep: true, nextMain: OPP[arm.main] };
     else if (arm.crossStep && c === arm.nextMain) next = { ...arm, crossStep: false, main: c };
     else if (c === D) next = arm;
-    else next = { mode: 'spiral', turned: true };
-  } else next = c === D ? arm : { ...arm, turned: true };
+    else next = { mode: 'spiral', turns: 1 };
+  } else next = c === D ? arm : { ...arm, turns: (arm.turns || 0) + 1 };
 
   const exits = { F: { ...chosen.g.exits.F, arm: next } };
   if (chosen.g.exits.L) {
-    exits.L = { ...chosen.g.exits.L, arm: { mode: 'spiral', turned: false } };
-    exits.R = { ...chosen.g.exits.R, arm: { mode: 'spiral', turned: false } };
+    exits.L = { ...chosen.g.exits.L, arm: { mode: 'spiral', turns: 0 } };
+    exits.R = { ...chosen.g.exits.R, arm: { mode: 'spiral', turns: 0 } };
   }
   return { rect: chosen.g.rect, halves: chosen.g.halves, exits, heading: c };
 }
@@ -111,7 +115,7 @@ function rootGeometry(node) {
   const [a, b] = node.tile;
   if (node.double) {
     const h1 = { x0: -0.5, y0: -1, x1: 0.5, y1: 0 }, h2 = { x0: -0.5, y0: 0, x1: 0.5, y1: 1 };
-    const spiral = { mode: 'spiral', turned: false };
+    const spiral = { mode: 'spiral', turns: 0 };
     const band = (main, cross) => (node.spinner ? spiral : { mode: 'band', main, cross, crossStep: false });
     return {
       rect: union(h1, h2), halves: [{ rect: h1, pip: a }, { rect: h2, pip: b }],

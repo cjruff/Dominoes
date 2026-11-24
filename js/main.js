@@ -83,8 +83,7 @@ function showAbout() {
   showOverlay(`<div class="about">
     <img class="about-img" src="assets/about-moe.webp" alt="Moe playing dominoes in a riverboat saloon">
     <h2 style="text-align:center">Moe's Dominoes</h2>
-    <p>Named for Morgan — “Moe” — our tuxedo cat.</p>
-    <p style="font-size:13px;opacity:.7">Code: © Corey J Ruff</p>
+    <p style="font-size:13px;opacity:.7">Code: © Corey J Ruff, 2027</p>
   </div><div class="buttons"><button class="btn primary" id="aBack">Back</button></div>`);
   $('aBack').onclick = () => (game ? showMenu() : hideOverlay());
 }
@@ -189,35 +188,59 @@ function onEvent(ev, g) {
 // =====================================================================
 function render() {
   if (!game) return;
-  renderSeats();
+  renderDocks();
   renderBoard();
   renderHand();
 }
 
-function renderSeats() {
+// ---------- Player docks: icon, name, score and face-down tiles on the table ----------
+const SEAT_SPOTS = { 1: ['top'], 2: ['left', 'right'], 3: ['left', 'top', 'right'] };
+const AVATAR_COLORS = ['#b5523b', '#3b6fb5', '#8a4fb0', '#2f8f6b'];
+
+function avatarHtml(p) {
+  // Session 5 brings chosen portraits; for now Moe gets hers and everyone else an initial.
+  if (/^moe$/i.test(p.name.trim())) return `<span class="av"><img src="assets/moe.webp" alt=""></span>`;
+  const ch = esc((p.name.trim()[0] || '?').toUpperCase());
+  return `<span class="av" style="background:${AVATAR_COLORS[p.idx % 4]}">${ch}</span>`;
+}
+
+function renderDocks() {
   const s = game.s;
-  const seats = $('seats');
-  seats.innerHTML = '';
-  for (const p of s.players) {
+  const table = $('table');
+  for (const d of table.querySelectorAll('.dock')) d.remove();
+  const me = s.players.find((p) => p.human);
+  const n = s.players.length;
+  const spots = SEAT_SPOTS[n - 1];
+  const used = new Set();
+  for (let k = 1; k < n; k++) {
+    const p = s.players[(me.idx + k) % n];
+    const spot = spots[k - 1];
+    used.add(spot);
     const d = document.createElement('div');
-    d.className = 'seat' + (p.idx === s.turn && !s.handOver ? ' turn' : '') + (passed.has(p.idx) ? ' passed' : '');
-    d.innerHTML = `<span class="nm"></span>${p.human ? '' : `<span class="lv">${LEVEL_NAMES[p.level]}</span>`}<span class="ct">${p.hand.length}▮</span><span class="sc">${p.score}</span>`;
-    d.querySelector('.nm').textContent = p.human ? (p.name || 'You') : p.name;
-    seats.appendChild(d);
+    d.className = `dock ${spot}` + (p.idx === s.turn && !s.handOver ? ' turn' : '') + (passed.has(p.idx) ? ' passed' : '');
+    const shown = Math.min(p.hand.length, 10);
+    const backs = Array.from({ length: shown }, () => '<i class="back"></i>').join('') +
+      (p.hand.length > shown ? `<em>+${p.hand.length - shown}</em>` : '');
+    d.innerHTML = `${avatarHtml(p)}<div class="who"><span class="nm"></span><span class="lv">${LEVEL_NAMES[p.level]}</span>` +
+      `<span class="sc">${p.score}</span></div><div class="backs" title="${p.hand.length} tiles">${backs}</div>`;
+    d.querySelector('.nm').textContent = p.name;
+    table.appendChild(d);
   }
+  table.classList.toggle('has-top', used.has('top'));
+  table.classList.toggle('has-sides', used.has('left'));
+
   const ends = s.mode === 'fives' && s.board.nodes.length ? ` · Ends <b>${endsTotal(s.board)}</b>` : '';
   const bone = MODES[s.mode].draws ? ` · Boneyard <b>${s.boneyard.length}</b>` : '';
-  $('info').innerHTML = `${MODES[s.mode].name}${s.mode === 'fives' ? (s.spinnerRule === 'all' ? ' (all spin)' : '') : ''} to ${s.target} · Hand ${s.handNo}${ends}${bone}`;
-  const me = s.players.find((p) => p.human);
+  $('info').innerHTML = `${MODES[s.mode].name}${s.mode === 'fives' && s.spinnerRule === 'all' ? ' (all spin)' : ''} to ${s.target} · Hand ${s.handNo}${ends}${bone}`;
   $('me').className = s.turn === me.idx && !s.handOver ? 'turn' : '';
-  $('me').innerHTML = `<span class="nm"></span><span class="sc">${me.score}</span>`;
+  $('me').innerHTML = `${avatarHtml(me)}<span class="nm"></span><span class="sc">${me.score}</span>`;
   $('me').querySelector('.nm').textContent = me.name;
 }
 
 function renderBoard() {
   const s = game.s;
   const svg = $('board');
-  const box = $('table').getBoundingClientRect();
+  const box = svg.getBoundingClientRect();
   const aspect = box.width / Math.max(1, box.height);
   const lay = layoutBoard(s.board, aspect);
   svg.innerHTML = '';
@@ -226,6 +249,7 @@ function renderBoard() {
   // Targets for the selected tile
   const ghosts = [];
   const me = game.current;
+  ghostEls = [];
   if (me.human && !s.handOver && selected) {
     const ends = openEnds(s.board);
     for (const m of game.legalMovesFor().filter((mv) => tileId(mv.tile) === selected)) {
@@ -262,6 +286,7 @@ function renderBoard() {
       const pts = pointsIf(g.m);
       if (pts) el('text', { x: (r.x0 + r.x1) / 2, y: (r.y0 + r.y1) / 2, class: 'ghost-label' }, grp).textContent = `+${pts}`;
     }
+    ghostEls.push({ m: g.m, el: grp });
     grp.addEventListener('click', () => humanPlay(g.m));
     grp.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') humanPlay(g.m); });
   });
@@ -289,7 +314,8 @@ function renderHand() {
     const svg = tileSvg(t, { theme });
     svg.classList.add(playable.has(id) ? 'playable' : myTurn ? 'dim' : 'idle');
     if (selected === id) svg.classList.add('selected');
-    svg.addEventListener('click', () => onHandTile(t, moves));
+    svg.dataset.id = id;
+    svg.addEventListener('pointerdown', (e) => startDrag(e, t, moves, svg));
     hand.appendChild(svg);
   }
   // Size tiles so the whole hand fits on one row (phones, big draws)
@@ -308,19 +334,99 @@ function renderHand() {
   $('btnPass').classList.toggle('pulse', mustPass);
 }
 
+// ---------- Dragging tiles from the hand ----------
+// A tap still works as before; moving more than a few pixels turns it into a drag.
+// While dragging, every spot the tile fits is outlined and the nearest one lights up.
+let ghostEls = [];
+let drag = null;
+
+function startDrag(e, t, moves, node) {
+  if (busy || e.button > 0) return;
+  e.preventDefault();
+  drag = { t, moves, node, x0: e.clientX, y0: e.clientY, active: false, float: null, hot: null };
+  window.addEventListener('pointermove', onDragMove);
+  window.addEventListener('pointerup', onDragEnd);
+  window.addEventListener('pointercancel', cancelDrag);
+}
+
+function onDragMove(e) {
+  if (!drag) return;
+  if (!drag.active) {
+    if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 8) return;
+    const id = tileId(drag.t);
+    if (!drag.moves.some((m) => tileId(m.tile) === id)) { shake(drag.t); return cancelDrag(); }
+    drag.active = true;
+    const r = drag.node.getBoundingClientRect();
+    drag.w = r.width; drag.h = r.height;
+    drag.float = tileSvg(drag.t, { theme, className: 'drag-float' });
+    drag.float.style.width = `${r.width}px`; drag.float.style.height = `${r.height}px`;
+    document.body.appendChild(drag.float);
+    selected = id;
+    render();
+    const src = $('hand').querySelector(`[data-id="${id}"]`);
+    if (src) src.classList.add('lifted');
+  }
+  drag.float.style.transform = `translate(${e.clientX - drag.w / 2}px, ${e.clientY - drag.h / 2}px) rotate(-6deg)`;
+  // Nearest target within reach
+  let best = null, bestD = Infinity;
+  for (const g of ghostEls) {
+    const b = g.el.getBoundingClientRect();
+    const d = Math.hypot(e.clientX - (b.left + b.width / 2), e.clientY - (b.top + b.height / 2));
+    if (d < bestD) { bestD = d; best = g; }
+  }
+  const reach = Math.max(70, drag.h * 1.1);
+  const hot = best && bestD < reach ? best : null;
+  for (const g of ghostEls) g.el.classList.toggle('hot', g === hot);
+  drag.hot = hot;
+}
+
+function onDragEnd(e) {
+  if (!drag) return;
+  const d = drag;
+  cleanupDrag();
+  if (!d.active) return onHandTile(d.t, d.moves); // it was a tap
+  if (d.hot) return humanPlay(d.hot.m);
+  // Dropped over the table with only one possible spot → play it there.
+  const tb = $('table').getBoundingClientRect();
+  const overTable = e.clientX >= tb.left && e.clientX <= tb.right && e.clientY >= tb.top && e.clientY <= tb.bottom;
+  const mine = d.moves.filter((m) => tileId(m.tile) === tileId(d.t));
+  if (overTable && mine.length === 1) return humanPlay(mine[0]);
+  selected = mine.length > 1 ? tileId(d.t) : null;
+  status(selected ? 'Drop it on a highlighted spot, or tap one.' : 'Your turn.');
+  render();
+}
+
+function cancelDrag() {
+  const wasActive = drag && drag.active;
+  cleanupDrag();
+  if (wasActive) { selected = null; render(); }
+}
+
+function cleanupDrag() {
+  if (drag && drag.float) drag.float.remove();
+  drag = null;
+  window.removeEventListener('pointermove', onDragMove);
+  window.removeEventListener('pointerup', onDragEnd);
+  window.removeEventListener('pointercancel', cancelDrag);
+}
+
+function shake(t) {
+  const node = $('hand').querySelector(`[data-id="${tileId(t)}"]`);
+  if (node) { node.classList.remove('shake'); void node.getBoundingClientRect(); node.classList.add('shake'); }
+}
+
 function onHandTile(t, moves) {
   if (busy) return;
   const id = tileId(t);
   const mine = moves.filter((m) => tileId(m.tile) === id);
   if (!mine.length) {
-    const node = [...$('hand').children].find((n) => n.getAttribute('aria-label') === `${t[0]}-${t[1]}`);
-    if (node) { node.classList.remove('shake'); void node.getBBox; node.classList.add('shake'); }
+    shake(t);
     return;
   }
   // Only one place it can go (or same spot either way) → just play it.
   if (mine.length === 1) return humanPlay(mine[0]);
   selected = selected === id ? null : id;
-  status(selected ? 'Tap a highlighted spot to place it.' : 'Your turn.');
+  status(selected ? 'Tap or drag to a highlighted spot.' : 'Your turn.');
   render();
 }
 

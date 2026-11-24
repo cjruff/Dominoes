@@ -332,7 +332,10 @@ function renderDocks() {
 
   const ends = s.mode === 'fives' && s.board.nodes.length ? ` · Ends <b>${endsTotal(s.board)}</b>` : '';
   const bone = MODES[s.mode].draws ? ` · Boneyard <b>${s.boneyard.length}</b>` : '';
-  $('handBadge').textContent = `Hand ${s.handNo}`;
+  // Fives: the open-ends count, big, in the corner of the table
+  const showEnds = s.mode === 'fives' && s.board.nodes.length > 0;
+  $('handBadge').textContent = showEnds ? `Ends ${endsTotal(s.board)}` : '';
+  $('handBadge').classList.toggle('hidden', !showEnds);
   $('info').innerHTML = `${MODES[s.mode].name}${s.mode === 'fives' && s.spinnerRule === 'all' ? ' (all spin)' : ''} to ${s.target} · Hand ${s.handNo}${ends}${bone}`;
   $('me').className = s.turn === me.idx && !s.handOver ? 'turn' : '';
   $('me').innerHTML = `${avatarHtml(me)}<div class="who"><span class="nm"></span><span class="sc">${me.score}</span></div>`;

@@ -8,8 +8,16 @@ const NS = 'http://www.w3.org/2000/svg';
 
 export const THEMES = {
   classic: {
-    name: 'Classic white', face: '#fbfaf4', face2: '#e9e6da', edge: '#2a2a2a', divider: '#6b6b6b',
+    id: 'classic', name: 'Classic white', face: '#fbfaf4', face2: '#e9e6da', edge: '#2a2a2a', divider: '#6b6b6b',
     pip: '#111111', pipColors: null, back: '#7b1e1e', backPattern: '#a33a3a', spinnerMark: '#c9a227',
+  },
+  black: {
+    id: 'black', name: 'Black', face: '#2b2b2b', face2: '#121212', edge: '#5a5a5a', divider: '#8a8a8a',
+    pip: '#f6f6f2', pipColors: null, back: '#7b1e1e', backPattern: '#a33a3a', spinnerMark: '#d8b04a',
+  },
+  blue: {
+    id: 'blue', name: 'Dark blue', face: '#23427a', face2: '#132a55', edge: '#0a1733', divider: '#9fb3d9',
+    pip: '#ffffff', pipColors: null, back: '#7b1e1e', backPattern: '#a33a3a', spinnerMark: '#d8b04a',
   },
 };
 
@@ -62,7 +70,7 @@ export function drawTile(parent, halves, opts = {}) {
     el('rect', { x: r.x0 + 0.2, y: r.y0 + 0.2, width: w - 0.32, height: h - 0.32, rx: 0.08, fill: 'none', stroke: th.backPattern, 'stroke-width': 0.05 }, g);
     return g;
   }
-  el('rect', { x: r.x0 + inset, y: r.y0 + inset, width: w, height: h, rx: 0.14, fill: `url(#faceGrad)`, stroke: th.edge, 'stroke-width': 0.035 }, g);
+  el('rect', { x: r.x0 + inset, y: r.y0 + inset, width: w, height: h, rx: 0.14, fill: `url(#faceGrad-${th.id})`, stroke: th.edge, 'stroke-width': 0.035 }, g);
   // divider
   const a = halves[0].rect, b = halves[1].rect;
   if (Math.abs(a.x1 - b.x0) < 0.01 || Math.abs(b.x1 - a.x0) < 0.01) {
@@ -87,8 +95,9 @@ export function drawTile(parent, halves, opts = {}) {
 
 /** Gradient defs shared by an SVG. */
 export function addDefs(svg, theme = THEMES.classic) {
+  theme = theme || THEMES.classic;
   const defs = el('defs', {}, svg);
-  const lg = el('linearGradient', { id: 'faceGrad', x1: 0, y1: 0, x2: 1, y2: 1 }, defs);
+  const lg = el('linearGradient', { id: `faceGrad-${theme.id}`, x1: 0, y1: 0, x2: 1, y2: 1 }, defs);
   el('stop', { offset: '0%', 'stop-color': theme.face }, lg);
   el('stop', { offset: '100%', 'stop-color': theme.face2 }, lg);
 }

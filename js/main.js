@@ -7,10 +7,13 @@ import { openEnds, endsTotal } from './board.js';
 import { layoutBoard, previewPlacement } from './layout.js';
 import { el, addDefs, drawTile, tileSvg, THEMES } from './render.js';
 import { tileId, handPips, makeRng } from './tiles.js';
+import { loadDisplay, saveDisplay, applyDisplay, tileTheme, TABLE_PRESETS } from './settings.js';
 import { loadSetup, saveSetup, loadStats, recordGame, resetStats, variantKey } from './stats.js';
 
 const $ = (id) => document.getElementById(id);
-const theme = THEMES.classic;
+let display = loadDisplay();
+let theme = tileTheme(display);
+applyDisplay(display);
 
 const MODE_HINTS = {
   fives: 'Score when the open ends add up to a multiple of 5. Draw when stuck. Doubles become spinners.',
@@ -78,11 +81,46 @@ function renderSetup() {
 $('btnStart').onclick = () => { saveSetup(setup); startGame(); };
 $('btnStats').onclick = () => showStats();
 $('btnAbout').onclick = () => showAbout();
+$('btnSettings').onclick = () => showSettings();
+
+function showSettings() {
+  const isPreset = TABLE_PRESETS.some((p) => p.color.toLowerCase() === display.table.toLowerCase());
+  const tableSw = TABLE_PRESETS.map((p) => `
+    <button class="swatch ${display.table.toLowerCase() === p.color ? 'on' : ''}" data-color="${p.color}">
+      <span class="chip" style="background:${p.color}"></span>${p.name}</button>`).join('');
+  const tileSw = Object.values(THEMES).map((t) => `
+    <button class="swatch tile-opt ${display.tiles === t.id ? 'on' : ''}" data-tiles="${t.id}">
+      <span class="tiles" data-preview="${t.id}"></span>${t.name}</button>`).join('');
+  showOverlay(`<h2>Settings</h2>
+    <div class="set-section"><h3>Table colour</h3><div class="swatches">${tableSw}
+      <label class="swatch ${isPreset ? '' : 'on'}" id="customSw"><input type="color" id="customColor" value="${display.table}">Custom</label>
+    </div></div>
+    <div class="set-section"><h3>Tiles</h3><div class="swatches">${tileSw}</div></div>
+    <div class="buttons"><button class="btn primary" id="setDone">Done</button><button class="btn" id="setReset">Defaults</button></div>`);
+  for (const span of $('panel').querySelectorAll('[data-preview]')) {
+    const th = THEMES[span.dataset.preview];
+    for (const t of [[6, 6], [3, 5], [1, 4]]) span.appendChild(tileSvg(t, { theme: th }));
+  }
+  const update = () => {
+    saveDisplay(display); applyDisplay(display); theme = tileTheme(display);
+    if (game) render();
+  };
+  for (const b of $('panel').querySelectorAll('[data-color]')) b.onclick = () => { display.table = b.dataset.color; update(); showSettings(); };
+  $('customColor').oninput = (e) => {
+    display.table = e.target.value; update();
+    for (const x of $('panel').querySelectorAll('.swatch[data-color]')) x.classList.remove('on');
+    $('customSw').classList.add('on');
+  };
+  for (const b of $('panel').querySelectorAll('[data-tiles]')) b.onclick = () => { display.tiles = b.dataset.tiles; update(); showSettings(); };
+  $('setReset').onclick = () => { display = { table: TABLE_PRESETS[0].color, tiles: 'classic' }; update(); showSettings(); };
+  $('setDone').onclick = () => (game ? showMenu() : hideOverlay());
+}
 
 function showAbout() {
   showOverlay(`<div class="about">
     <img class="about-img" src="assets/about-moe.webp" alt="Moe playing dominoes in a riverboat saloon">
     <h2 style="text-align:center">Moe's Dominoes</h2>
+    <p>See a bug? Please report it to <a href="mailto:me@coreyruff.com?subject=Moe%27s%20Dominoes%20bug">me@coreyruff.com</a></p>
     <p style="font-size:13px;opacity:.7">Code: © Corey J Ruff, 2027</p>
   </div><div class="buttons"><button class="btn primary" id="aBack">Back</button></div>`);
   $('aBack').onclick = () => (game ? showMenu() : hideOverlay());
@@ -540,6 +578,7 @@ function showMenu() {
     <div class="buttons" style="flex-wrap:wrap">
       <button class="btn primary" id="mResume">Resume</button>
       <button class="btn" id="mRules">How to play</button>
+      <button class="btn" id="mSettings">Settings</button>
       <button class="btn" id="mStats">Stats</button>
       <button class="btn" id="mAbout">About</button>
       <button class="btn" id="mQuit">Quit game</button>
@@ -548,6 +587,7 @@ function showMenu() {
   $('mRules').onclick = showRules;
   $('mStats').onclick = () => showStats(true);
   $('mAbout').onclick = showAbout;
+  $('mSettings').onclick = showSettings;
   $('mQuit').onclick = () => { if (confirm('Quit this game? It won’t count in your stats.')) toSetup(); };
 }
 $('btnMenu').onclick = showMenu;

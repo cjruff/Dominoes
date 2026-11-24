@@ -23,7 +23,7 @@ button { font: inherit; cursor: pointer; }
 /* ---------- Setup ---------- */
 #setup {
   min-height: 100%; display: flex; align-items: center; justify-content: center; padding: 18px;
-  background: radial-gradient(ellipse at 50% 30%, #1f6b49 0%, var(--felt) 45%, var(--felt-dark) 100%);
+  background: radial-gradient(ellipse at 50% 30%, var(--felt-light, #1f6b49) 0%, var(--felt) 45%, var(--felt-dark) 100%);
 }
 .setup-card {
   width: min(560px, 100%); background: rgba(10, 30, 20, 0.55); border: 2px solid var(--wood-light);
@@ -84,7 +84,7 @@ select option { color: #000; }
 
 #table {
   position: relative; overflow: hidden;
-  background: radial-gradient(ellipse at 50% 45%, #1f6b49 0%, var(--felt) 55%, var(--felt-dark) 100%);
+  background: radial-gradient(ellipse at 50% 45%, var(--felt-light, #1f6b49) 0%, var(--felt) 55%, var(--felt-dark) 100%);
   box-shadow: inset 0 0 60px rgba(0,0,0,.45);
 }
 #board { width: 100%; height: 100%; display: block; }
@@ -119,7 +119,7 @@ select option { color: #000; }
 #hand .tile-svg { height: calc(var(--tray-h) - 22px); max-height: 128px; width: auto; flex: none; transition: transform .15s, filter .15s, opacity .15s; }
 #hand .tile-svg.playable { cursor: pointer; filter: drop-shadow(0 0 6px var(--glow)); }
 #hand .tile-svg.playable:hover { transform: translateY(-4px); }
-#hand .tile-svg.dim { opacity: .55; }
+#hand .tile-svg.dim { opacity: .62; }
 #hand .tile-svg.selected { transform: translateY(-8px); filter: drop-shadow(0 0 10px var(--glow)) drop-shadow(0 0 3px #fff); }
 #hand .tile-svg.shake { animation: shake .3s; }
 @keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
@@ -131,7 +131,7 @@ select option { color: #000; }
 /* ---------- Overlay ---------- */
 #overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; padding: 12px; z-index: 10; }
 .panel {
-  width: min(640px, 100%); max-height: 92dvh; overflow: auto; background: #10301f; border: 2px solid var(--wood-light);
+  width: min(640px, 100%); max-height: 92dvh; overflow: auto; background: #10301f; background: color-mix(in srgb, var(--felt-dark, #0e3826) 80%, #000); border: 2px solid var(--wood-light);
   border-radius: 16px; padding: 18px 20px; box-shadow: 0 16px 50px rgba(0,0,0,.6);
 }
 .panel h2 { font-family: Georgia, serif; margin: 0 0 4px; color: var(--gold); }
@@ -273,3 +273,18 @@ select option { color: #000; }
 @media (max-height: 480px) { #toast { top: 34%; } }
 #btnDraw small { font-size: inherit; font-weight: 500; }
 @media (max-width: 560px) { #btnDraw small { display: block; font-size: 11px; opacity: .85; } }
+
+/* ---------- Settings ---------- */
+.set-section { margin: 14px 0 6px; }
+.set-section h3 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; opacity: .8; font-weight: 600; }
+.swatches { display: flex; flex-wrap: wrap; gap: 10px; }
+.swatch {
+  display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 6px; border-radius: 12px;
+  background: rgba(0,0,0,.2); border: 2px solid transparent; color: var(--cream); font-size: 12px; min-width: 84px;
+}
+.swatch.on { border-color: var(--gold); background: rgba(216,176,74,.12); }
+.swatch .chip { width: 64px; height: 40px; border-radius: 8px; border: 1px solid rgba(255,255,255,.25); box-shadow: inset 0 0 12px rgba(0,0,0,.45); }
+.swatch input[type=color] { width: 64px; height: 40px; padding: 0; border: 1px solid rgba(255,255,255,.25); border-radius: 8px; background: none; cursor: pointer; }
+.tile-opt .tiles { display: flex; gap: 4px; height: 58px; padding: 4px 8px; border-radius: 8px; background: var(--felt); }
+.tile-opt .tile-svg { height: 50px; width: auto; }
+.panel a { color: var(--gold); }

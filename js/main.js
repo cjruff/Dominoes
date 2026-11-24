@@ -8,6 +8,9 @@ import { layoutBoard, previewPlacement } from './layout.js';
 import { el, addDefs, drawTile, tileSvg, THEMES } from './render.js';
 import { tileId, handPips, makeRng } from './tiles.js';
 import { loadDisplay, saveDisplay, applyDisplay, tileTheme, TABLE_PRESETS } from './settings.js';
+import { GameTracker, commitGame, loadRecord, resetRecord, ACHIEVEMENTS, CATEGORIES, MEDALS, MEDAL_NAMES,
+  medalImg, medalFor, progressOf, tiersReached, totalMedals } from './achievements.js';
+import { lineFor } from './personalities.js';
 import { BUILT_IN, allPlayers, byId, createPlayer } from './roster.js';
 import { loadSetup, saveSetup, loadStats, recordGame, resetStats, variantKey } from './stats.js';
 
@@ -41,6 +44,10 @@ let lastNodeCount = 0;
 let recorded = false;
 let passed = new Set();    // who passed since the last play (for the seat badges)
 let allPlays = [];         // every play this game, for best-play stats
+let tracker = null;        // achievements tracker for the current game
+let newMedals = [];        // medals earned by the game that just finished
+let gloatShown = false;
+let turnDraws = {};        // tiles drawn this turn, per player (for dialogue)
 
 // =====================================================================
 // Setup screen
@@ -116,6 +123,7 @@ $('btnStart').onclick = () => { saveSetup(setup); startGame(); };
 $('btnStats').onclick = () => showStats();
 $('btnAbout').onclick = () => showAbout();
 $('btnSettings').onclick = () => showSettings();
+$('btnAch').onclick = () => showAchievements();
 
 function showSettings() {
   const isPreset = TABLE_PRESETS.some((p) => p.color.toLowerCase() === display.table.toLowerCase());
@@ -173,7 +181,8 @@ function startGame() {
   const seed = () => crypto.getRandomValues(new Uint32Array(1))[0];
   game = new Game({ mode: setup.mode, spinnerRule: setup.spinnerRule, players, target: setup.target }, makeRng(seed()), makeRng(seed()));
   game.onEvent = onEvent;
-  recorded = false;
+  tracker = new GameTracker(game, 0);
+  recorded = false; newMedals = []; gloatShown = false; turnDraws = {};
   allPlays = [];
   $('setup').classList.add('hidden');
   $('game').classList.remove('hidden');
@@ -242,6 +251,17 @@ function humanPlay(move) {
 
 function onEvent(ev, g) {
   const s = g.s;
+  if (tracker) tracker.onEvent(ev, g);
+  if (ev.type === 'draw') turnDraws[ev.player] = (turnDraws[ev.player] || 0) + 1;
+  if (ev.type === 'play' || ev.type === 'pass') {
+    const d = turnDraws[ev.player] || 0;
+    turnDraws[ev.player] = 0;
+    if (d > 3) {
+      say(ev.player, 'bigDrawSelf');
+      for (const p of s.players) if (p.idx !== ev.player) say(p.idx, 'bigDrawOther');
+    }
+    if (ev.type === 'play' && ev.points > 20) say(ev.player, 'bigScore');
+  }
   const who = ev.player != null ? s.players[ev.player] : null;
   const nm = who ? (who.human ? 'You' : who.name) : '';
   switch (ev.type) {
@@ -297,6 +317,7 @@ function renderDocks() {
     used.add(spot);
     const d = document.createElement('div');
     d.className = `dock ${spot}` + (p.idx === s.turn && !s.handOver ? ' turn' : '') + (passed.has(p.idx) ? ' passed' : '');
+    d.dataset.idx = p.idx;
     const shown = Math.min(p.hand.length, 10);
     const backs = Array.from({ length: shown }, () => '<i class="back"></i>').join('') +
       (p.hand.length > shown ? `<em>+${p.hand.length - shown}</em>` : '');
@@ -636,19 +657,78 @@ function showGameOver() {
     recordGame({ mode: s.mode, spinnerRule: s.spinnerRule, players: s.players, winner: s.winner,
       scores: s.players.map((p) => p.score), hands: s.handNo, dominoes: doms, bestPlay: best, handsWon, target: s.target });
     allPlays = [];
+    if (tracker) newMedals = commitGame(tracker, game);
   }
   const human = s.players.find((p) => p.human);
   const corey = s.players.find((p) => p.loseImage);
-  if (corey && s.winner !== human.idx) showGloat(corey);
+  if (corey && s.winner !== human.idx && !gloatShown) { gloatShown = true; showGloat(corey); }
   const head = s.winner === null ? 'Game over' : w.human ? 'You win! 🎉' : `${esc(w.name)} wins`;
-  showOverlay(`<h2>${head}</h2><p>${r.reason === 'reachedTarget' ? 'Reached the target on a scoring play.' : handHeadline(r)}</p>${resultTable(r)}
-    <div class="buttons"><button class="btn primary" id="btnAgain">Play again</button><button class="btn" id="btnSt">Stats</button></div>`);
+  // What the computer players say about the result
+  const quotes = s.players.filter((p) => !p.human).map((p) => {
+    const line = lineFor(p.rosterId, p.idx === s.winner ? 'win' : 'lose');
+    return line ? `<div class="quote">${avatarHtml(p)}<b>${esc(p.name)}:</b> “${esc(line)}”</div>` : '';
+  }).join('');
+  const shown = newMedals.slice(0, 8);
+  const medalsHtml = newMedals.length ? `<div class="new-medals"><h3>New medals!</h3><div class="medal-row">${shown.map((m) =>
+    `<div class="nm-item"><img src="${medalImg(m.medal)}" alt="${MEDAL_NAMES[m.medal]}"><span>${esc(m.a.name)}</span></div>`).join('')}
+    ${newMedals.length > shown.length ? `<div class="nm-more">+${newMedals.length - shown.length} more</div>` : ''}</div></div>` : '';
+  showOverlay(`<h2>${head}</h2><p>${r.reason === 'reachedTarget' ? 'Reached the target on a scoring play.' : handHeadline(r)}</p>${quotes}${resultTable(r)}${medalsHtml}
+    <div class="buttons"><button class="btn primary" id="btnAgain">Play again</button><button class="btn" id="goAch">Achievements</button><button class="btn" id="btnSt">Stats</button></div>`);
   fillMiniHands(r);
+  $('goAch').onclick = () => showAchievements(showGameOver);
   // Back to the main screen (your last choices are kept) so you can change the game or opponents.
   $('btnAgain').onclick = () => { document.getElementById('gloat')?.remove(); toSetup(); };
   $('btnSt').onclick = () => showStats(true);
 }
 
+
+// ---------- Speech bubbles ----------
+function say(idx, event) {
+  const p = game.s.players[idx];
+  if (!p || p.human) return;
+  const line = lineFor(p.rosterId, event);
+  if (!line) return;
+  const table = $('table');
+  const dock = table.querySelector(`.dock[data-idx="${idx}"]`);
+  if (!dock) return;
+  const tr = table.getBoundingClientRect(), dr = dock.getBoundingClientRect();
+  const b = document.createElement('div');
+  b.className = 'bubble';
+  b.textContent = line;
+  if (dock.classList.contains('top')) { b.classList.add('below'); b.style.left = `${dr.left - tr.left + dr.width / 2}px`; b.style.top = `${dr.bottom - tr.top + 10}px`; }
+  else if (dock.classList.contains('left')) { b.classList.add('right'); b.style.left = `${dr.right - tr.left + 10}px`; b.style.top = `${dr.top - tr.top + 18}px`; }
+  else { b.classList.add('left'); b.style.right = `${tr.right - dr.left + 10}px`; b.style.top = `${dr.top - tr.top + 18}px`; }
+  table.appendChild(b);
+  setTimeout(() => b.classList.add('fade'), 2200);
+  setTimeout(() => b.remove(), 2700);
+}
+
+// ---------- Achievements screen ----------
+function showAchievements(back) {
+  const rec = loadRecord();
+  let got = 0;
+  const sections = CATEGORIES.map((cat, ci) => {
+    const rows = ACHIEVEMENTS.filter((a) => a.cat === ci).map((a) => {
+      const v = progressOf(rec, a);
+      const n = tiersReached(a, v);
+      got += n;
+      const top = n ? medalFor(a, n - 1) : (a.tiers.length === 1 ? a.medal : 'bronze');
+      const next = a.tiers[n];
+      const prog = next != null ? `${Math.min(v, next).toLocaleString()} / ${next.toLocaleString()}` : 'Complete';
+      const pips = a.tiers.length > 1
+        ? `<div class="pips">${MEDALS.map((m, i) => `<i class="pip ${m} ${i < n ? 'on' : ''}" title="${MEDAL_NAMES[m]}: ${a.tiers[i].toLocaleString()}"></i>`).join('')}</div>`
+        : `<div class="pips single">${MEDAL_NAMES[a.medal]}</div>`;
+      return `<div class="ach ${n ? 'got' : ''}"><img src="${medalImg(top)}" alt=""><div class="ach-txt"><b>${esc(a.name)}</b><span>${esc(a.desc)}</span></div>
+        <div class="ach-prog">${pips}<small>${prog}</small></div></div>`;
+    }).join('');
+    return `<h3 class="ach-cat">${esc(cat)}</h3>${rows}`;
+  }).join('');
+  showOverlay(`<h2>Achievements</h2><p class="ach-sum"><b>${got}</b> of ${totalMedals()} medals earned</p>
+    <div class="ach-list">${sections}</div>
+    <div class="buttons"><button class="btn primary" id="achBack">Back</button><button class="btn" id="achReset">Reset medals</button></div>`);
+  $('achBack').onclick = () => (back ? back() : hideOverlay());
+  $('achReset').onclick = () => { if (confirm('Erase all medals and achievement progress?')) { resetRecord(); showAchievements(back); } };
+}
 
 // Shown over everything when you lose a game with Corey at the table. Tap to close.
 function showGloat(p) {
@@ -678,6 +758,7 @@ function showMenu() {
       <button class="btn primary" id="mResume">Resume</button>
       <button class="btn" id="mRules">How to play</button>
       <button class="btn" id="mSettings">Settings</button>
+      <button class="btn" id="mAch">Achievements</button>
       <button class="btn" id="mStats">Stats</button>
       <button class="btn" id="mAbout">About</button>
       <button class="btn" id="mQuit">Quit game</button>
@@ -685,6 +766,7 @@ function showMenu() {
   $('mResume').onclick = hideOverlay;
   $('mRules').onclick = showRules;
   $('mStats').onclick = () => showStats(true);
+  $('mAch').onclick = () => showAchievements(showMenu);
   $('mAbout').onclick = showAbout;
   $('mSettings').onclick = showSettings;
   $('mQuit').onclick = () => { if (confirm('Quit this game? It won’t count in your stats.')) toSetup(); };

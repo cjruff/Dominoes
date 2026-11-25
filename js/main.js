@@ -11,7 +11,8 @@ import { loadDisplay, saveDisplay, applyDisplay, tileTheme, TABLE_PRESETS } from
 import { GameTracker, commitGame, liveMedals, loadRecord, resetRecord, ACHIEVEMENTS, CATEGORIES, MEDALS, MEDAL_NAMES,
   medalImg, medalFor, progressOf, tiersReached, totalMedals } from './achievements.js';
 import { lineFor } from './personalities.js';
-import { BUILT_IN, allPlayers, byId, createPlayer } from './roster.js';
+import { BUILT_IN, allPlayers, byId, createPlayer, updatePlayer, deletePlayer, loadMe, saveMe } from './roster.js';
+import { pickPhoto } from './photo.js';
 import { loadSetup, saveSetup, loadStats, recordGame, resetStats, viewStats, VARIANTS, LEVEL_ORDER } from './stats.js';
 
 const $ = (id) => document.getElementById(id);
@@ -74,9 +75,53 @@ function renderSetup() {
   sel.value = setup.target;
   sel.onchange = () => { setup.target = Number(sel.value); };
   $('inpName').value = setup.name;
-  $('inpName').oninput = (e) => { setup.name = e.target.value.trim() || 'You'; };
+  $('inpName').oninput = (e) => { setup.name = e.target.value.trim() || 'You'; renderMyPhoto(); };
+  renderMyPhoto();
 
   renderCpuRows();
+}
+
+// ---------- Your photo ----------
+function renderMyPhoto() {
+  const me = loadMe();
+  $('btnMyPhoto').innerHTML = avatarHtml({ name: setup.name || 'You', portrait: me.photo, idx: 0 }) + '<span class="cam">📷</span>';
+}
+$('btnMyPhoto').onclick = () => {
+  const me = loadMe();
+  showOverlay(`<h2>Your photo</h2><div class="photo-edit">${avatarHtml({ name: setup.name || 'You', portrait: me.photo, idx: 0 })}</div>
+    <p class="st-note">Take a picture or choose one from your phone or computer. It's shrunk to a small square and kept on this device.</p>
+    <div class="buttons"><button class="btn primary" id="phPick">${me.photo ? 'Change photo' : 'Add photo'}</button>
+    ${me.photo ? '<button class="btn" id="phRemove">Remove</button>' : ''}<button class="btn" id="phDone">Done</button></div>`);
+  $('phPick').onclick = async () => { const ph = await pickPhoto(); if (ph) { saveMe({ ...loadMe(), photo: ph }); renderMyPhoto(); $('btnMyPhoto').onclick(); } };
+  if ($('phRemove')) $('phRemove').onclick = () => { saveMe({ ...loadMe(), photo: null }); renderMyPhoto(); $('btnMyPhoto').onclick(); };
+  $('phDone').onclick = hideOverlay;
+};
+
+// ---------- Create / edit a computer player (name + photo) ----------
+function editPlayer(existing, onDone) {
+  let photo = existing ? existing.face : null;
+  const draw = () => {
+    showOverlay(`<h2>${existing ? 'Edit player' : 'New computer player'}</h2>
+      <div class="photo-edit" id="peAv">${avatarHtml({ name: existing ? existing.name : '?', portrait: photo, idx: 2 })}</div>
+      <div class="field"><label for="peName">Name</label><input id="peName" maxlength="14" autocomplete="off" value="${esc(existing ? existing.name : '')}"></div>
+      <div class="buttons"><button class="btn" id="pePhoto">${photo ? 'Change photo' : 'Add photo'}</button>
+        ${photo ? '<button class="btn" id="peNoPhoto">Remove photo</button>' : ''}
+        ${existing ? '<button class="btn" id="peDelete">Delete player</button>' : ''}</div>
+      <div class="buttons"><button class="btn primary" id="peSave">Save</button><button class="btn" id="peCancel">Cancel</button></div>`);
+    const nameNow = () => $('peName').value;
+    $('pePhoto').onclick = async () => { const keep = nameNow(); const ph = await pickPhoto(); if (ph) photo = ph; draw(); $('peName').value = keep; };
+    if ($('peNoPhoto')) $('peNoPhoto').onclick = () => { const keep = nameNow(); photo = null; draw(); $('peName').value = keep; };
+    if ($('peDelete')) $('peDelete').onclick = () => { if (confirm(`Delete ${existing.name}? Their stats stay in your records.`)) { deletePlayer(existing.id); hideOverlay(); onDone(null, true); } };
+    $('peCancel').onclick = () => { hideOverlay(); onDone(null); };
+    $('peSave').onclick = () => {
+      const name = nameNow().trim();
+      if (!name) return $('peName').focus();
+      const p = existing ? updatePlayer(existing.id, { name, photo }) : createPlayer(name, photo);
+      hideOverlay(); onDone(p);
+    };
+    setTimeout(() => $('peName') && !existing && $('peName').focus(), 50);
+  };
+  draw();
 }
 
 function renderCpuRows() {
@@ -94,6 +139,11 @@ function renderCpuRows() {
     const who = byId(c.id) || BUILT_IN[0];
     const row = document.createElement('div'); row.className = 'cpu-row';
     row.innerHTML = avatarHtml({ name: who.name, portrait: who.face, idx: i + 1 });
+    if (who.custom) {
+      // Tap a created player's picture to change their name or photo
+      const av = row.firstElementChild; av.classList.add('editable'); av.title = `Edit ${who.name}`;
+      av.onclick = () => editPlayer(who, () => { if (!byId(c.id)) c.id = BUILT_IN[0].id; saveSetup(setup); renderCpuRows(); });
+    }
     const pick = document.createElement('select');
     for (const r of roster) {
       const o = document.createElement('option'); o.value = r.id; o.textContent = r.name;
@@ -104,10 +154,10 @@ function renderCpuRows() {
     pick.value = c.id;
     pick.onchange = () => {
       if (pick.value === '__new') {
-        const name = prompt('Name for the new computer player:');
-        const p = createPlayer(name);
-        if (p && !takenByOthers.has(p.id)) c.id = p.id;
-      } else c.id = pick.value;
+        pick.value = c.id;
+        return editPlayer(null, (p) => { if (p && !takenByOthers.has(p.id)) c.id = p.id; saveSetup(setup); renderCpuRows(); });
+      }
+      c.id = pick.value;
       saveSetup(setup);
       renderCpuRows();
     };
@@ -139,6 +189,9 @@ function showSettings() {
       <label class="swatch ${isPreset ? '' : 'on'}" id="customSw"><input type="color" id="customColor" value="${display.table}">Custom</label>
     </div></div>
     <div class="set-section"><h3>Tiles</h3><div class="swatches">${tileSw}</div></div>
+    <div class="set-section"><h3>Player Icons</h3><div class="seg" id="segIcons">
+      <button data-v="circle" class="${display.icons !== 'large' ? 'on' : ''}">Small Circles</button>
+      <button data-v="large" class="${display.icons === 'large' ? 'on' : ''}">Large Portraits</button></div></div>
     <div class="buttons"><button class="btn primary" id="setDone">Done</button><button class="btn" id="setReset">Defaults</button></div>`);
   for (const span of $('panel').querySelectorAll('[data-preview]')) {
     const th = THEMES[span.dataset.preview];
@@ -155,7 +208,8 @@ function showSettings() {
     $('customSw').classList.add('on');
   };
   for (const b of $('panel').querySelectorAll('[data-tiles]')) b.onclick = () => { display.tiles = b.dataset.tiles; update(); showSettings(); };
-  $('setReset').onclick = () => { display = { table: TABLE_PRESETS[0].color, tiles: 'classic' }; update(); showSettings(); };
+  for (const b of $('panel').querySelectorAll('#segIcons button')) b.onclick = () => { display.icons = b.dataset.v; update(); showSettings(); };
+  $('setReset').onclick = () => { display = { table: TABLE_PRESETS[0].color, tiles: 'classic', icons: 'large', iconsV: 2 }; update(); showSettings(); };
   $('setDone').onclick = () => (game ? showMenu() : hideOverlay());
 }
 
@@ -173,10 +227,10 @@ function showAbout() {
 // Game flow
 // =====================================================================
 function startGame() {
-  const players = [{ name: setup.name || 'You', human: true }];
+  const players = [{ name: setup.name || 'You', human: true, portrait: loadMe().photo || null }];
   for (let i = 0; i < setup.players - 1; i++) {
     const who = byId(setup.cpus[i].id) || BUILT_IN[i];
-    players.push({ name: who.name, level: who.onlyLevel || setup.cpus[i].level, portrait: who.face, rosterId: who.id, loseImage: who.loseImage || null });
+    players.push({ name: who.name, level: who.onlyLevel || setup.cpus[i].level, portrait: who.face, image: who.img, rosterId: who.id, loseImage: who.loseImage || null });
   }
   // Two independent, unpredictable seeds: one for shuffling, one for the computer players' thinking.
   const seed = () => crypto.getRandomValues(new Uint32Array(1))[0];
@@ -317,16 +371,20 @@ function renderDocks() {
     const spot = spots[k - 1];
     used.add(spot);
     const d = document.createElement('div');
-    d.className = `dock ${spot}` + (p.idx === s.turn && !s.handOver ? ' turn' : '') + (passed.has(p.idx) ? ' passed' : '');
+    const big = display.icons === 'large';
+    d.className = `dock ${spot}` + (big ? ' big' : '') + (p.idx === s.turn && !s.handOver ? ' turn' : '') + (passed.has(p.idx) ? ' passed' : '');
     d.dataset.idx = p.idx;
     const shown = Math.min(p.hand.length, 10);
     const backs = Array.from({ length: shown }, () => '<i class="back"></i>').join('') +
       (p.hand.length > shown ? `<em>+${p.hand.length - shown}</em>` : '');
-    d.innerHTML = `${avatarHtml(p)}<div class="who"><span class="nm"></span><span class="lv">${LEVEL_NAMES[p.level]}</span>` +
+    // Large style: the full portrait stands on top of the card (initial circle if there's no picture)
+    const pic = big && p.image ? `<img class="portrait" src="${p.image}" alt="">` : avatarHtml(p);
+    d.innerHTML = `${pic}<div class="who"><span class="nm"></span><span class="lv">${LEVEL_NAMES[p.level]}</span>` +
       `<span class="sc">${p.score}</span></div><div class="backs" title="${p.hand.length} tiles">${backs}</div>`;
     d.querySelector('.nm').textContent = p.name;
     table.appendChild(d);
   }
+  table.classList.toggle('big-icons', display.icons === 'large');
   table.classList.toggle('has-top', used.has('top'));
   table.classList.toggle('has-sides', used.has('left'));
 
@@ -693,7 +751,11 @@ function showGameOver() {
 // ---------- Medal flash (as each one is earned) ----------
 function flashMedal(m) {
   let box = document.getElementById('medalPops');
-  if (!box) { box = document.createElement('div'); box.id = 'medalPops'; document.body.appendChild(box); }
+  if (!box) { box = document.createElement('div'); box.id = 'medalPops'; }
+  // On the table (just below the top player) during a game; top of the page otherwise
+  const host = game && !$('game').classList.contains('hidden') ? $('table') : document.body;
+  if (box.parentElement !== host) host.appendChild(box);
+  box.classList.toggle('in-table', host !== document.body);
   const d = document.createElement('div');
   d.className = 'medal-pop';
   d.innerHTML = `<img src="${medalImg(m.medal)}" alt=""><div><small>${MEDAL_NAMES[m.medal]} medal</small><b>${esc(m.a.name)}</b></div>`;
@@ -795,7 +857,7 @@ $('btnMenu').onclick = showMenu;
 
 function showRules() {
   showOverlay(`<h2>Rules</h2><div class="rules">
-    <h3>The deal</h3><p>Moe's Dominoes uses a double-six set (28 tiles). With 2 players each gets 7 tiles; with 3 or 4 players, 5 each — except 4-player Block, which deals 7 each and uses every tile. The rest are the boneyard. Everyone plays for themselves.</p>
+    <h3>The deal</h3><p>Moe's Dominoes uses a double-six set (28 tiles). Fives always deals 7 tiles each. Block and Draw deal 7 each with 2 players and 5 each with 3 or 4 — except 4-player Block, which deals 7 each. The rest are the boneyard (none when all 28 are dealt). Everyone plays for themselves.</p>
     <h3>Who leads</h3><p>On the first hand, the player with the highest double leads and must play it (if nobody has a double, the heaviest tile leads). After that, the winner of the last hand leads with any tile — the player who went out, or the lowest count when the hand was blocked. If a blocked hand ties for the lowest count, the highest double leads again.</p>
     <h3>Playing</h3><p>Turns go clockwise. Match one end of your tile to an open end of the line. Doubles are placed crosswise. Tap a tile to see where it fits, then tap the spot, double-tap the tile, or drag it there.</p>
     <h3>Ending a hand</h3><p><b>Going out (domino):</b> play your last tile and you score the pips left in everyone else's hands.<br>

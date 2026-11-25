@@ -400,3 +400,69 @@ select:disabled { opacity: .75; }
 .panel:has(.stats-table) .buttons { flex-wrap: wrap; }
 .panel:has(.stats-table) .buttons .btn.primary { flex-basis: 100%; }
 .panel:has(.stats-table) .buttons .btn:not(.primary) { flex: 1; }
+
+/* ---------- Large portraits on the player cards (Settings → Player Icons) ---------- */
+.dock.big { flex-direction: column; align-items: center; text-align: center; gap: 4px; padding: 0 8px 10px; width: 132px; }
+.dock.big .portrait { width: 116px; height: 116px; object-fit: contain; margin-top: -34px; filter: drop-shadow(0 6px 10px rgba(0,0,0,.55)); }
+.dock.big .av { width: 76px; height: 76px; font-size: 32px; margin-top: 8px; }
+.dock.big .who { align-items: center; }
+.dock.big .nm { max-width: 116px; font-size: 15px; }
+.dock.big .backs { justify-content: center; max-width: 116px !important; }
+.dock.big.top { flex-direction: column; top: 40px; }
+.dock.big.turn .portrait { filter: drop-shadow(0 0 10px rgba(255,226,122,.75)) drop-shadow(0 6px 10px rgba(0,0,0,.55)); }
+#table.big-icons.has-top { --in-t: 230px; }
+#table.big-icons.has-sides { --in-l: 152px; --in-r: 152px; }
+
+/* Short screens (phones held sideways): portrait beside the name instead of above */
+@media (max-height: 560px) {
+  .dock.big { width: 92px; padding: 0 5px 6px; gap: 2px; }
+  .dock.big .portrait { width: 72px; height: 72px; margin-top: -18px; }
+  .dock.big .av { width: 44px; height: 44px; font-size: 18px; }
+  .dock.big.top { flex-direction: row; top: 20px; width: auto; padding: 0 10px 0 4px; gap: 8px; }
+  .dock.big.top .portrait { width: 58px; height: 58px; margin: -14px 0 0; }
+  .dock.big.top .backs { max-width: 150px !important; }
+  #table.big-icons.has-top { --in-t: 74px; }
+  #table.big-icons.has-sides { --in-l: 104px; --in-r: 104px; }
+}
+@media (pointer: coarse) {
+  #table.big-icons.has-sides { --in-l: calc(var(--sal) + 104px); --in-r: calc(var(--sar) + 104px); }
+}
+.dock.big .portrait { border-radius: 10px; }
+@media (max-width: 560px) {
+  .dock.big { width: 96px; padding: 0 5px 8px; }
+  .dock.big .portrait { width: 80px; height: 80px; margin-top: -22px; }
+  .dock.big .nm { font-size: 13px; }
+  #table.big-icons.has-sides, #table.big-icons.has-sides { --in-l: calc(var(--sal) + 100px); --in-r: calc(var(--sar) + 100px); }
+}
+
+/* Card sizes stay fixed during play: the tile row always reserves two rows */
+.dock.big .backs { height: 47px; align-content: flex-start; }
+.dock.big .who { min-height: 50px; justify-content: flex-start; }
+@media (min-width: 1200px) and (min-height: 820px) {
+  .dock.big { width: 150px; }
+  .dock.big .portrait { width: 136px; height: 136px; margin-top: -40px; }
+  .dock.big .backs, .dock.big .nm { max-width: 134px !important; }
+  #table.big-icons.has-top { --in-t: 250px; }
+  #table.big-icons.has-sides { --in-l: 170px; --in-r: 170px; }
+}
+@media (max-height: 560px) {
+  .dock.big .backs { height: 43px; }
+  .dock.big .who { min-height: 0; }
+  .dock.big.top .backs { width: 150px; height: 20px; flex-wrap: nowrap; overflow: hidden; }
+  .dock.big.top .who { min-width: 56px; }
+}
+@media (max-width: 560px) { .dock.big .backs { height: 43px; } }
+
+/* Photo controls */
+.me-row { display: flex; gap: 8px; align-items: center; }
+.photo-btn { position: relative; padding: 0; border: 0; background: none; flex: none; }
+.photo-btn .av { width: 42px; height: 42px; }
+.photo-btn .cam { position: absolute; right: -4px; bottom: -4px; font-size: 13px; background: var(--wood); border-radius: 50%; padding: 1px 2px; }
+.cpu-row .av.editable { cursor: pointer; outline: 2px dashed rgba(216,176,74,.6); outline-offset: 2px; }
+.photo-edit { display: flex; justify-content: center; margin: 8px 0; }
+.photo-edit .av { width: 120px; height: 120px; font-size: 48px; }
+
+/* Score and medal pop-ups sit just below the top player's card */
+#toast { top: calc(var(--in-t, 6px) + 12px); }
+#medalPops.in-table { position: absolute; top: calc(var(--in-t, 6px) + 64px); }
+@media (max-height: 480px) { #toast { top: calc(var(--in-t, 6px) + 6px); } #medalPops.in-table { top: calc(var(--in-t, 6px) + 44px); } }

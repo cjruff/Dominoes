@@ -19,6 +19,7 @@ export const SPINNER_RULES = {
 };
 
 export function handSize(nPlayers, mode) {
+  if (mode === 'fives') return 7;                   // Fives: always 7 each
   if (mode === 'block' && nPlayers === 4) return 7; // 4-player Block uses every tile
   return nPlayers === 2 ? 7 : 5;
 }
@@ -43,7 +44,7 @@ export class Game {
       target: opts.target || MODES[mode].defaultTarget,
       players: opts.players.map((p, i) => ({
         idx: i, name: p.name, human: !!p.human, level: p.level || 'medium',
-        personality: p.personality || null, portrait: p.portrait || null, rosterId: p.rosterId || null,
+        personality: p.personality || null, portrait: p.portrait || null, image: p.image || null, rosterId: p.rosterId || null,
         loseImage: p.loseImage || null, score: 0, hand: [],
       })),
       handNo: 0,

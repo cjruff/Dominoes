@@ -12,10 +12,14 @@ export const TABLE_PRESETS = [
   { id: 'slate', name: 'Slate', color: '#3a4249' },
 ];
 
-const DEFAULTS = { table: '#17573b', tiles: 'classic' };
+const DEFAULTS = { table: '#17573b', tiles: 'classic', icons: 'large', iconsV: 2 }; // icons: 'circle' | 'large'
 
 export function loadDisplay() {
-  try { return { ...DEFAULTS, ...(JSON.parse(localStorage.getItem(KEY)) || {}) }; } catch { return { ...DEFAULTS }; }
+  try {
+    const d = { ...DEFAULTS, ...(JSON.parse(localStorage.getItem(KEY)) || {}) };
+    if (d.iconsV !== 2) { d.icons = 'large'; d.iconsV = 2; } // large portraits became the default
+    return d;
+  } catch { return { ...DEFAULTS }; }
 }
 export function saveDisplay(d) { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch { /* ignore */ } }
 

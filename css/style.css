@@ -466,3 +466,21 @@ select:disabled { opacity: .75; }
 #toast { top: calc(var(--in-t, 6px) + 12px); }
 #medalPops.in-table { position: absolute; top: calc(var(--in-t, 6px) + 64px); }
 @media (max-height: 480px) { #toast { top: calc(var(--in-t, 6px) + 6px); } #medalPops.in-table { top: calc(var(--in-t, 6px) + 44px); } }
+
+/* ---------- Phones held sideways: keep side players below the top player ---------- */
+.dock .count { display: none; font-size: 11px; opacity: .85; }
+@media (max-height: 560px) {
+  .dock.big.left, .dock.big.right { top: calc(var(--in-t, 6px) + 22px); transform: none; }
+  .dock.big .portrait { width: 60px; height: 60px; margin-top: -16px; }
+  .dock.big.top { top: 16px; }
+  .dock.big.top .portrait { width: 52px; height: 52px; margin-top: -10px; }
+  #table.big-icons.has-top { --in-t: 68px; }
+}
+/* Very short (browser bars showing): tile count in words instead of tile backs */
+@media (max-height: 370px) {
+  .dock.big .backs { display: none; }
+  .dock.big .count { display: block; }
+  .dock.big .who { min-height: 0; }
+  .dock.big.left, .dock.big.right { padding-bottom: 6px; }
+  .dock.big.top .who { flex-direction: row; gap: 8px; align-items: baseline; }
+}

@@ -380,7 +380,7 @@ function renderDocks() {
     // Large style: the full portrait stands on top of the card (initial circle if there's no picture)
     const pic = big && p.image ? `<img class="portrait" src="${p.image}" alt="">` : avatarHtml(p);
     d.innerHTML = `${pic}<div class="who"><span class="nm"></span><span class="lv">${LEVEL_NAMES[p.level]}</span>` +
-      `<span class="sc">${p.score}</span></div><div class="backs" title="${p.hand.length} tiles">${backs}</div>`;
+      `<span class="sc">${p.score}</span><span class="count">${p.hand.length} tile${p.hand.length === 1 ? '' : 's'}</span></div><div class="backs" title="${p.hand.length} tiles">${backs}</div>`;
     d.querySelector('.nm').textContent = p.name;
     table.appendChild(d);
   }
@@ -481,14 +481,10 @@ function placeSideDocks(bb, vx, vy, vw) {
   const tilesR = sr.left - tr.left + (bb.x1 - vx) * scale;
   const { safeL, safeR } = safeArea();
   for (const d of docks) {
-    const dw = d.offsetWidth, gap = 14;
-    if (d.classList.contains('left')) {
-      d.style.right = '';
-      d.style.left = `${Math.max(safeL + 6, Math.min(tr.width / 2 - dw - gap, tilesL - dw - gap))}px`;
-    } else {
-      d.style.left = '';
-      d.style.right = `${Math.max(safeR + 6, Math.min(tr.width / 2 - dw - gap, tr.width - tilesR - dw - gap))}px`;
-    }
+    // Sit at the screen edge, just inside the safe area (clear of the camera notch),
+    // so the cards never take room from the playing surface.
+    if (d.classList.contains('left')) { d.style.right = ''; d.style.left = `${safeL + 6}px`; }
+    else { d.style.left = ''; d.style.right = `${safeR + 6}px`; }
   }
 }
 

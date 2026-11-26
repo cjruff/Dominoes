@@ -97,11 +97,11 @@ select option { color: #000; }
 .ghost-label { fill: var(--glow); font-size: .55px; font-weight: 700; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
 
 #toast {
-  position: absolute; left: 50%; top: 14%; transform: translate(-50%, -10px); opacity: 0; pointer-events: none;
+  position: absolute; left: 50%; top: 14%; transform: translate(var(--tx, -50%), -10px); opacity: 0; pointer-events: none;
   background: rgba(0,0,0,.7); border: 2px solid var(--gold); color: var(--gold); font-weight: 800;
   padding: 8px 18px; border-radius: 30px; font-size: clamp(16px, 3vw, 24px); transition: opacity .25s, transform .25s;
 }
-#toast.show { opacity: 1; transform: translate(-50%, 0); }
+#toast.show { opacity: 1; transform: translate(var(--tx, -50%), 0); }
 #status {
   position: absolute; left: 0; right: 0; bottom: 6px; text-align: center; font-size: 14px; opacity: .9;
   text-shadow: 0 1px 2px #000; pointer-events: none; padding: 0 10px;
@@ -303,7 +303,7 @@ select:disabled { opacity: .75; }
 /* Phones: keep everything clear of the camera notch / rounded corners */
 :root { --sal: env(safe-area-inset-left, 0px); --sar: env(safe-area-inset-right, 0px); }
 @media (pointer: coarse) {
-  .dock.left, .dock.right { transition: left .35s ease, right .35s ease, border-color .2s, box-shadow .2s; }
+  .dock.left { left: calc(var(--sal) + 6px); } .dock.right { right: calc(var(--sar) + 6px); }
   #table.has-sides { --in-l: calc(var(--sal) + 74px); --in-r: calc(var(--sar) + 74px); }
 }
 
@@ -484,3 +484,40 @@ select:disabled { opacity: .75; }
   .dock.big.left, .dock.big.right { padding-bottom: 6px; }
   .dock.big.top .who { flex-direction: row; gap: 8px; align-items: baseline; }
 }
+
+#toast { z-index: 7; white-space: nowrap; }
+
+/* ---------- Scores, bottom-left of the table ---------- */
+#table { --in-b: 46px; }
+#scoreBadge {
+  position: absolute; left: 14px; bottom: 6px; z-index: 2; pointer-events: none; display: flex; align-items: baseline; gap: 10px;
+  font-family: Georgia, serif; font-weight: 700; font-size: clamp(20px, 3vw, 30px); color: var(--gold); text-shadow: 0 2px 4px rgba(0,0,0,.6);
+}
+#scoreBadge .sb-n { font-size: .62em; color: var(--cream); font-weight: 600; }
+#scoreBadge .sb-dot { opacity: .5; font-size: .7em; }
+#status { bottom: 12px; }
+@media (max-height: 480px) { #table { --in-b: 30px; } #scoreBadge { font-size: 18px; bottom: 4px; left: 10px; gap: 6px; } #status { bottom: 30px; font-size: 12px; } }
+@media (max-width: 760px) { #scoreBadge { font-size: 17px; gap: 6px; } #status { bottom: 30px; } #table { --in-b: 52px; } }
+
+/* ---------- Bigger, easier-to-read hand and game summaries ---------- */
+.panel.summary { width: min(920px, 100%); padding: 22px 26px; }
+.panel.summary h2 { font-size: 32px; }
+.panel.summary > p { font-size: 21px; }
+.panel.summary .res-table { font-size: 19px; }
+.panel.summary .res-table th { font-size: 15px; text-transform: uppercase; letter-spacing: .5px; opacity: .85; }
+.panel.summary .res-table td { padding: 10px 8px; }
+.panel.summary .res-table td.num b { font-size: 24px; color: var(--gold); }
+.panel.summary .mini-hand { gap: 5px; }
+.panel.summary .mini-hand .tile-svg { height: 46px; }
+.panel.summary .quote { font-size: 19px; }
+.panel.summary .quote .av { width: 40px; height: 40px; }
+.panel.summary .btn { font-size: 19px; padding: 12px 20px; }
+.panel.summary .nm-item { width: 96px; font-size: 13px; } .panel.summary .nm-item img { width: 62px; height: 62px; }
+@media (max-height: 480px), (max-width: 560px) {
+  .panel.summary { padding: 14px 16px; }
+  .panel.summary h2 { font-size: 24px; } .panel.summary > p { font-size: 17px; }
+  .panel.summary .res-table { font-size: 16px; } .panel.summary .res-table td { padding: 6px 5px; }
+  .panel.summary .mini-hand .tile-svg { height: 34px; }
+  .panel.summary .btn { font-size: 16px; padding: 9px 14px; }
+}
+@media (max-height: 480px), (max-width: 560px) { #toast { font-size: 16px; padding: 5px 14px; } }

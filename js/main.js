@@ -323,7 +323,7 @@ function onEvent(ev, g) {
     case 'play':
       allPlays.push(ev);
       passed.delete(ev.player);
-      if (ev.points) toast(`${nm} ${who.human ? 'score' : 'scores'} ${ev.points}!`);
+      if (ev.points) toast(`${nm} ${who.human ? 'score' : 'scores'} ${ev.points}!`, ev.player);
       status(`${nm} played ${ev.tile[0]}-${ev.tile[1]}${ev.drew ? ` after drawing ${ev.drew}` : ''}${ev.spinner && s.board.nodes.length > 1 ? ' — a spinner!' : ''}.`);
       break;
     case 'draw':
@@ -331,7 +331,7 @@ function onEvent(ev, g) {
       break;
     case 'pass':
       passed.add(ev.player);
-      if (!who.human) toast(`${nm} passes`);
+      if (!who.human) toast(`${nm} passes`, ev.player);
       status(`${nm} ${who.human ? 'pass' : 'passes'}.`);
       break;
     default: break;
@@ -394,6 +394,9 @@ function renderDocks() {
   const showEnds = s.mode === 'fives' && s.board.nodes.length > 0;
   $('handBadge').textContent = showEnds ? `Ends ${endsTotal(s.board)}` : '';
   $('handBadge').classList.toggle('hidden', !showEnds);
+  // Everyone's score, bottom-left of the table
+  $('scoreBadge').innerHTML = s.players.map((p) =>
+    `<span class="sb"><span class="sb-n">${esc(p.human ? (p.name || 'You') : p.name)}</span> ${p.score}</span>`).join('<span class="sb-dot">·</span>');
   $('info').innerHTML = `${MODES[s.mode].name}${s.mode === 'fives' && s.spinnerRule === 'all' ? ' (all spin)' : ''} to ${s.target} · Hand ${s.handNo}${ends}${bone}`;
   $('me').className = s.turn === me.idx && !s.handOver ? 'turn' : '';
   $('me').innerHTML = `${avatarHtml(me)}<div class="who"><span class="nm"></span><span class="sc">${me.score}</span></div>`;
@@ -471,22 +474,9 @@ function safeArea() {
   const cs = getComputedStyle(safeProbe);
   return { safeL: parseFloat(cs.paddingLeft) || 0, safeR: parseFloat(cs.paddingRight) || 0 };
 }
-function placeSideDocks(bb, vx, vy, vw) {
-  const table = $('table');
-  const docks = table.querySelectorAll('.dock.left, .dock.right');
-  if (!isTouch.matches) { for (const d of docks) d.style.left = d.style.right = ''; return; }
-  const tr = table.getBoundingClientRect(), sr = $('board').getBoundingClientRect();
-  const scale = sr.width / vw;
-  const tilesL = sr.left - tr.left + (bb.x0 - vx) * scale;
-  const tilesR = sr.left - tr.left + (bb.x1 - vx) * scale;
-  const { safeL, safeR } = safeArea();
-  for (const d of docks) {
-    // Sit at the screen edge, just inside the safe area (clear of the camera notch),
-    // so the cards never take room from the playing surface.
-    if (d.classList.contains('left')) { d.style.right = ''; d.style.left = `${safeL + 6}px`; }
-    else { d.style.left = ''; d.style.right = `${safeR + 6}px`; }
-  }
-}
+// Side players sit at the screen edges (CSS, inside the safe area). Nothing is
+// moved from code, so the cards stay perfectly still while tiles are played.
+function placeSideDocks() {}
 
 function pointsIf(m) {
   const sim = game.clone();
@@ -656,9 +646,28 @@ $('btnPass').onclick = () => {
 };
 
 let toastTimer = null;
-function toast(msg) {
+// Pop-up pill, placed next to the player it's about (below the top player,
+// beside the left/right players, above your own icon).
+function toast(msg, idx = null) {
   const t = $('toast');
-  t.textContent = msg; t.classList.add('show');
+  t.textContent = msg;
+  t.style.left = t.style.right = t.style.top = t.style.bottom = '';
+  t.style.setProperty('--tx', '-50%');
+  const table = $('table'), tr = table.getBoundingClientRect();
+  const p = idx != null && game ? game.s.players[idx] : null;
+  const dock = p && !p.human ? table.querySelector(`.dock[data-idx="${idx}"]`) : null;
+  if (p && p.human) {
+    const m = $('me').getBoundingClientRect();
+    t.style.left = `${Math.max(90, m.left - tr.left + m.width / 2)}px`;
+    t.style.top = 'auto'; t.style.bottom = '54px';
+  } else if (dock && dock.classList.contains('left')) {
+    const d = dock.getBoundingClientRect();
+    t.style.left = `${d.right - tr.left + 12}px`; t.style.top = `${d.top - tr.top + 24}px`; t.style.setProperty('--tx', '0px');
+  } else if (dock && dock.classList.contains('right')) {
+    const d = dock.getBoundingClientRect();
+    t.style.left = 'auto'; t.style.right = `${tr.right - d.left + 12}px`; t.style.top = `${d.top - tr.top + 24}px`; t.style.setProperty('--tx', '0px');
+  }
+  t.classList.add('show');
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 1500);
 }
 function status(msg) { $('status').textContent = msg; }
@@ -666,7 +675,7 @@ function status(msg) { $('status').textContent = msg; }
 // =====================================================================
 // Overlays
 // =====================================================================
-function showOverlay(html) { $('panel').innerHTML = html; $('overlay').classList.remove('hidden'); }
+function showOverlay(html, cls = '') { $('panel').className = `panel ${cls}`; $('panel').innerHTML = html; $('overlay').classList.remove('hidden'); }
 function hideOverlay() { $('overlay').classList.add('hidden'); }
 
 function resultTable(r) {
@@ -699,7 +708,7 @@ function showHandOver() {
   const r = game.s.handResult;
   render();
   showOverlay(`<h2>Hand ${r.handNo}</h2><p>${handHeadline(r)}</p>${resultTable(r)}
-    <div class="buttons"><button class="btn primary" id="btnNext">Next hand</button></div>`);
+    <div class="buttons"><button class="btn primary" id="btnNext">Next hand</button></div>`, 'summary');
   fillMiniHands(r);
   $('btnNext').onclick = () => { hideOverlay(); newHand(); };
 }
@@ -735,7 +744,7 @@ function showGameOver() {
     `<div class="nm-item"><img src="${medalImg(m.medal)}" alt="${MEDAL_NAMES[m.medal]}"><span>${esc(m.a.name)}</span></div>`).join('')}
     ${newMedals.length > shown.length ? `<div class="nm-more">+${newMedals.length - shown.length} more</div>` : ''}</div></div>` : '';
   showOverlay(`<h2>${head}</h2><p>${r.reason === 'reachedTarget' ? 'Reached the target on a scoring play.' : handHeadline(r)}</p>${quotes}${resultTable(r)}${medalsHtml}
-    <div class="buttons"><button class="btn primary" id="btnAgain">Play again</button><button class="btn" id="goAch">Achievements</button><button class="btn" id="btnSt">Stats</button></div>`);
+    <div class="buttons"><button class="btn primary" id="btnAgain">Play again</button><button class="btn" id="goAch">Achievements</button><button class="btn" id="btnSt">Stats</button></div>`, 'summary');
   fillMiniHands(r);
   $('goAch').onclick = () => showAchievements(showGameOver);
   // Back to the main screen (your last choices are kept) so you can change the game or opponents.

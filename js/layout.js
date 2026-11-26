@@ -87,9 +87,22 @@ function placeAt(exit, dbl, inPip, outPip, rects, lim) {
   }
   const order = dbl ? [D] : [...new Set([want, D, CW[D], CCW[D]])].filter((c) => c !== OPP[D]);
   let chosen = null;
-  for (const c of order) {
-    const g = c === D ? straight : geometry(exit, c, dbl, inPip, outPip);
-    if (!rects.some((r) => hit(r, g.rect))) { chosen = { c, g }; break; }
+  if (arm.mode === 'spiral' && !dbl) {
+    // Branch arms: among clear headings, prefer the one with the most open table ahead
+    // (the snaking/turn preference breaks ties), so branches don't run into other tiles.
+    let best = -1;
+    order.forEach((c, i) => {
+      const g = c === D ? straight : geometry(exit, c, dbl, inPip, outPip);
+      if (rects.some((r) => hit(r, g.rect))) return;
+      const ahead = freeRun({ A: g.exits.F.A, D: c }, [...rects, g.rect], 4);
+      const score = ahead * 10 - i;
+      if (score > best) { best = score; chosen = { c, g }; }
+    });
+  } else {
+    for (const c of order) {
+      const g = c === D ? straight : geometry(exit, c, dbl, inPip, outPip);
+      if (!rects.some((r) => hit(r, g.rect))) { chosen = { c, g }; break; }
+    }
   }
   if (!chosen) chosen = { c: want, g: want === D ? straight : geometry(exit, want, dbl, inPip, outPip) };
 
@@ -138,23 +151,56 @@ function rootGeometry(node) {
 /**
  * Lay out a board. Returns { tiles:[{id, rect, halves, double, spinner}], exits, rects, bbox, lim }
  */
+// Spinner side arms come in pairs (root N/S, others L/R). When a side arm starts,
+// use whichever of the pair has the longer clear run, so a branch doesn't grow
+// straight into tiles already on the table.
+const PAIR = { N: 'S', S: 'N', L: 'R', R: 'L' };
+
+function freeRun(exit, rects, max = 5) {
+  let e = { A: exit.A, D: exit.D }, n = 0;
+  for (; n < max; n++) {
+    const g = geometry(e, e.D, false, 0, 0);
+    if (rects.some((r) => hit(r, g.rect))) break;
+    e = { A: g.exits.F.A, D: e.D };
+  }
+  return n;
+}
+
+/** Exit to use for a new tile at parent:slot, swapping a spinner pair if the other side is clearer. */
+function exitFor(exits, used, rects, parentId, slot) {
+  const key = `${parentId}:${slot}`;
+  const other = PAIR[slot];
+  if (other && !used.has(key)) {
+    const okey = `${parentId}:${other}`;
+    if (exits[okey] && !used.has(okey) && freeRun(exits[okey], rects) > freeRun(exits[key], rects)) {
+      return { swap: [key, okey], exit: exits[okey] };
+    }
+  }
+  return { swap: null, exit: exits[key] };
+}
+
+/**
+ * Lay out a board. Returns { tiles:[{id, rect, halves, double, spinner}], exits, rects, bbox, lim }
+ */
 export function layoutBoard(board, aspect) {
   const lim = limitsFor(aspect);
-  const tiles = [], rects = [], exits = {};
+  const tiles = [], rects = [], exits = {}, used = new Set();
   let bbox = null;
   for (const n of board.nodes) {
     let g;
     if (n.parent === null) g = rootGeometry(n);
     else {
-      const ex = exits[`${n.parent}:${n.slot}`];
-      g = placeAt(ex, n.double, n.inPip, n.outPip, rects, lim);
+      const { swap, exit } = exitFor(exits, used, rects, n.parent, n.slot);
+      if (swap) { const t = exits[swap[0]]; exits[swap[0]] = exits[swap[1]]; exits[swap[1]] = t; }
+      used.add(`${n.parent}:${n.slot}`);
+      g = placeAt(exit, n.double, n.inPip, n.outPip, rects, lim);
     }
     for (const [slot, e] of Object.entries(g.exits)) exits[`${n.id}:${slot}`] = e;
     rects.push(g.rect);
     tiles.push({ id: n.id, rect: g.rect, halves: g.halves, double: n.double, spinner: n.spinner, tile: n.tile });
     bbox = bbox ? union(bbox, g.rect) : g.rect;
   }
-  return { tiles, exits, rects, bbox: bbox || { x0: -1, y0: -1, x1: 1, y1: 1 }, lim };
+  return { tiles, exits, rects, used, bbox: bbox || { x0: -1, y0: -1, x1: 1, y1: 1 }, lim };
 }
 
 /** Where a tile would land for a legal move (for the "drop here" targets). */
@@ -165,7 +211,7 @@ export function previewPlacement(lay, move, endValue) {
     const g = rootGeometry({ tile: [Math.min(...t), Math.max(...t)], double: dbl, spinner: false });
     return { rect: g.rect, halves: g.halves };
   }
-  const ex = lay.exits[`${move.nodeId}:${move.slot}`];
+  const ex = exitFor(lay.exits, lay.used, lay.rects, move.nodeId, move.slot).exit;
   if (!ex) return null;
   // The end's value is the pip that must face inward.
   const inPip = endValue ?? t[0];

@@ -408,7 +408,7 @@ function paintOdos() {
       [...el.children].forEach((col, k) => {
         const i = digits - 1 - k;                    // digit place for this wheel
         const pos = wheelPos(v, i);
-        col.firstElementChild.style.transform = `translateY(${-pos}em)`;
+        col.firstElementChild.style.transform = `translateY(calc(${-pos} * var(--cell)))`;
         col.style.opacity = i > 0 && v < Math.pow(10, i) && pos < 0.02 ? '0' : '1'; // no leading zeros
       });
     }
@@ -846,12 +846,19 @@ function showGameOver() {
   }).join('');
   const shown = newMedals.slice(0, 8);
   const medalsHtml = newMedals.length ? `<div class="new-medals"><h3>New medals!</h3><div class="medal-row">${shown.map((m) =>
-    `<div class="nm-item"><img src="${medalImg(m.medal)}" alt="${MEDAL_NAMES[m.medal]}"><span>${esc(m.a.name)}</span></div>`).join('')}
+    `<div class="nm-item" tabindex="0"><img src="${medalImg(m.medal)}" alt="${MEDAL_NAMES[m.medal]}"><span>${esc(m.a.name)}</span>
+      <div class="nm-tip"><b>${MEDAL_NAMES[m.medal]} · ${esc(m.a.name)}</b>${esc(m.a.desc)}${m.a.tiers.length > 1 ? ` <em>(${m.a.tiers[m.tier].toLocaleString()} time${m.a.tiers[m.tier] === 1 ? '' : 's'})</em>` : ''}</div></div>`).join('')}
     ${newMedals.length > shown.length ? `<div class="nm-more">+${newMedals.length - shown.length} more</div>` : ''}</div></div>` : '';
   showOverlay(`<h2>${head}</h2><p>${r.reason === 'reachedTarget' ? 'Reached the target on a scoring play.' : handHeadline(r)}</p>${quotes}${resultTable(r)}${medalsHtml}
     <div class="buttons"><button class="btn primary" id="btnAgain">Play again</button><button class="btn" id="goAch">Achievements</button><button class="btn" id="btnSt">Stats</button></div>`, 'summary');
   fillMiniHands(r);
   $('goAch').onclick = () => showAchievements(showGameOver);
+  // Phones have no hover: tap a medal to show or hide its description
+  for (const it of $('panel').querySelectorAll('.nm-item')) it.onclick = () => {
+    const on = !it.classList.contains('tip');
+    for (const x of $('panel').querySelectorAll('.nm-item.tip')) x.classList.remove('tip');
+    it.classList.toggle('tip', on);
+  };
   // Back to the main screen (your last choices are kept) so you can change the game or opponents.
   $('btnAgain').onclick = () => { document.getElementById('gloat')?.remove(); toSetup(); };
   $('btnSt').onclick = () => showStats(true);

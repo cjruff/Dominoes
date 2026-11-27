@@ -540,8 +540,25 @@ button.by-slot:hover { transform: translateY(-5px); filter: drop-shadow(0 0 8px 
   .panel.boneyard h2 { font-size: 20px; margin: 0; }
 }
 
-/* Rolling score wheels */
-.odo { display: inline-flex; height: 1em; line-height: 1em; overflow: hidden; vertical-align: -0.12em; font-variant-numeric: tabular-nums; }
-.odo-col { display: inline-block; height: 1em; overflow: hidden; }
+/* Rolling score wheels. Each digit gets a taller cell than the text so the
+   numbers above and below in the wheel (and Georgia's dropped 3/4/5/7/9) stay hidden. */
+.odo { --cell: 1.35em; display: inline-flex; height: var(--cell); line-height: var(--cell); overflow: hidden;
+  vertical-align: -0.24em; font-variant-numeric: lining-nums tabular-nums; }
+.odo-col { display: inline-block; height: var(--cell); overflow: hidden; }
 .odo-strip { display: flex; flex-direction: column; will-change: transform; }
-.odo-strip i { font-style: normal; display: block; height: 1em; line-height: 1em; text-align: center; }
+.odo-strip i { font-style: normal; display: block; height: var(--cell); line-height: var(--cell); text-align: center; }
+
+/* Medal descriptions on the game summary (hover on desktop, tap on phones) */
+.new-medals { position: relative; }
+.medal-row { overflow: visible; }
+.nm-item { position: relative; cursor: help; animation: none; }
+.nm-tip {
+  display: none; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); z-index: 20;
+  width: 230px; padding: 9px 12px; border-radius: 10px; background: #0b1a12; border: 2px solid var(--gold);
+  color: var(--cream); font-size: 14px; line-height: 1.35; text-align: left; box-shadow: 0 8px 20px rgba(0,0,0,.6);
+}
+.nm-tip b { display: block; color: var(--gold); margin-bottom: 3px; }
+.nm-tip em { opacity: .75; font-style: normal; }
+.nm-tip::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -7px; border: 7px solid transparent; border-top-color: var(--gold); }
+.nm-item:hover .nm-tip, .nm-item:focus .nm-tip, .nm-item.tip .nm-tip { display: block; }
+.medal-row .nm-item:first-child .nm-tip { left: 0; transform: none; } .medal-row .nm-item:first-child .nm-tip::after { left: 40px; }

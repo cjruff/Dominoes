@@ -6,6 +6,8 @@
 // A GameTracker watches one game's events; commitGame() adds them to your record
 // when the game finishes (a quit game doesn't count, same as stats).
 
+import { openEnds } from './board.js';
+
 export const MEDALS = ['bronze', 'silver', 'gold', 'platinum', 'diamond'];
 export const MEDAL_NAMES = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', platinum: 'Platinum', diamond: 'Diamond' };
 export const medalImg = (m) => `assets/medals/${m}.webp`;
@@ -64,7 +66,7 @@ export const ACHIEVEMENTS = [
   { id: 'chainReaction', cat: 2, name: 'Chain Reaction', desc: '5 scoring plays in a row, by you and your opponents', tiers: TFAST, fives: true },
   { id: 'bookends', cat: 2, name: 'Bookends', desc: 'Score 20 by playing the double-4 with the double-6 showing on an end (or the double-6 with the double-4 showing)', tiers: T250, fives: true },
   { id: 'toTheBank', cat: 2, name: 'Heading to the Bank', desc: 'Go out on a play that scores 20+ points', tiers: T250, fives: true },
-  { id: 'triplePlay', cat: 2, name: 'Triple Play', desc: 'Score with your last tile, collect the pips left in opponents’ hands, then score 5+ with the opening tile of the next hand', tiers: T250, fives: true },
+  { id: 'triplePlay', cat: 2, name: 'The Trifecta', desc: 'Score with your last tile, collect the pips left in opponents’ hands, then score 5+ with the opening tile of the next hand', tiers: T250, fives: true },
   { id: 'doubledUpOn', cat: 2, name: 'Doubled Up On', desc: 'End a hand holding only doubles (3+)', tiers: T50 },
 
   // ---- Evil Genius / Opponent Torment ----
@@ -82,13 +84,17 @@ export const ACHIEVEMENTS = [
   { id: 'soClose', cat: 3, name: 'So Close, Yet So Far', desc: 'Draw 3+ tiles when down to your last one', tiers: TFAST, notBlock: true },
 
   // ---- Funny / Unusual ----
-  { id: 'butterfingers', cat: 4, name: 'Butterfingers', desc: 'Draw 10 tiles in one hand', tiers: T50, notBlock: true },
-  { id: 'hoarder', cat: 4, name: 'Hoarder', desc: 'Finish a hand with 10+ tiles', tiers: T50, notBlock: true },
+  { id: 'butterfingers', cat: 4, name: 'Butterfingers', desc: 'Draw 5+ tiles in one hand', tiers: T250, notBlock: true },
+  { id: 'hoarder', cat: 4, name: 'Hoarder', desc: 'Finish a hand with 7+ tiles', tiers: T250, notBlock: true },
   { id: 'doubleDisaster', cat: 4, name: 'Double Disaster', desc: 'Finish a hand holding 3+ doubles', tiers: TFAST },
-  { id: 'longGame', cat: 4, name: 'The Long Game', desc: 'Play a game lasting 25+ hands', tiers: T50 },
+  { id: 'longGame', cat: 4, name: 'The Long Game', desc: 'Play a game lasting 12+ hands', tiers: T250 },
   { id: 'soCloseLose', cat: 4, name: 'So Close!', desc: 'Lose by 1 point (5 in Fives)', tiers: T50 },
-  { id: 'comebackNobody', cat: 4, name: 'The Comeback Nobody Saw', desc: 'Win after being 100+ points behind', tiers: T50 },
+  { id: 'comebackNobody', cat: 4, name: 'The Comeback Nobody Saw', desc: 'Win after being 50+ points behind', tiers: T250 },
   { id: 'brickWall', cat: 4, name: 'Brick Wall', desc: '5 blocked hands in one game', tiers: TFAST },
+  { id: 'lonelyOne', cat: 4, name: "1 Isn't the Loneliest Number", desc: 'Leave only 1s showing on 3+ open ends', tiers: T250, fives: true },
+  { id: 'satanist', cat: 4, name: 'The Satanist', desc: 'Leave only 6s showing on 3+ open ends', tiers: T250, fives: true },
+  { id: 'godIsGreat', cat: 4, name: 'God Is Great', desc: 'Leave only 7s showing on 3+ open ends (needs a set with 7s)', tiers: T250, fives: true },
+  { id: 'kindaSuck', cat: 4, name: 'You Kinda Suck At This', desc: 'Lose 100 games', tiers: [100], medal: 'platinum', life: 'losses' },
   { id: 'godsAngry', cat: 4, name: 'The Domino Gods Are Angry', desc: 'Lose 5 games in a row', tiers: T50 },
   { id: 'cheap', cat: 4, name: 'Cheap Bastard', desc: 'Lose a hand holding only the double-blank', tiers: TFAST },
   { id: 'howBoutNo', cat: 4, name: "How 'Bout No!", desc: 'Win a hand while an opponent holds only the double-blank', tiers: TFAST },
@@ -119,7 +125,10 @@ export function emptyRecord() {
   };
 }
 export function loadRecord(store = globalThis.localStorage) {
-  try { return { ...emptyRecord(), ...(JSON.parse(store.getItem(KEY)) || {}) }; } catch { return emptyRecord(); }
+  let rec;
+  try { rec = { ...emptyRecord(), ...(JSON.parse(store.getItem(KEY)) || {}) }; } catch { rec = emptyRecord(); }
+  if (rec.life.losses == null) rec.life.losses = Math.max(0, (rec.life.games || 0) - (rec.life.wins || 0));
+  return rec;
 }
 function saveRecord(rec, store = globalThis.localStorage) { try { store.setItem(KEY, JSON.stringify(rec)); } catch { /* ignore */ } }
 export function resetRecord(store = globalThis.localStorage) { saveRecord(emptyRecord(), store); }
@@ -201,7 +210,7 @@ export class GameTracker {
         } else {
           if (startSize === 1 && d >= 3) this.bump('soClose');
           this.h.draws += d; this.g.draws += d;
-          if (this.h.draws >= 10 && this.h.draws - d < 10) this.bump('butterfingers');
+          if (this.h.draws >= 5 && this.h.draws - d < 5) this.bump('butterfingers');
         }
         this.turnDraws[p] = 0; this.turnStartSize[p] = null;
         this.lastActor = p; this.lastWasPlay = ev.type === 'play';
@@ -232,6 +241,12 @@ export class GameTracker {
         if (exposed) this.bump('bookends');
       }
       if (handEmpty && ev.points >= 20) this.bump('toTheBank');
+      // Every open end showing the same number (3+ ends)
+      const ends = openEnds(game.s.board).map((e) => e.value);
+      if (ends.length >= 3 && ends.every((v) => v === ends[0])) {
+        const id = { 1: 'lonelyOne', 6: 'satanist', 7: 'godIsGreat' }[ends[0]];
+        if (id) this.bump(id);
+      }
       this.lastScoredOut = handEmpty && ev.points > 0;
       if (dbl) { this.h.doubles++; this.g.doubles++; if (this.h.doubles === 5) this.bump('doubleDown'); }
       if (dbl && t[0] === 1) this.bump('snakeEyes');
@@ -269,7 +284,7 @@ export class GameTracker {
       if (mine.length === 1 && mine[0][0] === 0 && mine[0][1] === 0) this.bump('cheap');
     }
     this.stuckWith66 = mine.some((t) => t[0] === 6 && t[1] === 6);
-    if (mine.length >= 10) this.bump('hoarder');
+    if (mine.length >= 7) this.bump('hoarder');
     if (mine.filter(isDbl).length >= 3) this.bump('doubleDisaster');
     if (mine.length >= 3 && mine.every(isDbl)) this.bump('doubledUpOn');
     if (mine.length === 2 && mine.some((t) => isDbl(t) && t[0] === 6) && mine.some((t) => Math.min(...t) === 0 && Math.max(...t) === 6)) this.bump('devilsWork');
@@ -316,7 +331,7 @@ export function commitGame(tracker, game, store = globalThis.localStorage) {
     if (tracker.g.handsLost === 0) bump('perfectRecord');
     if (tracker.g.hands === 1) bump('cleanSweep');
     if (tracker.g.maxDeficit > 50) bump('comebackKid');
-    if (tracker.g.maxDeficit >= 100) bump('comebackNobody');
+    if (tracker.g.maxDeficit >= 50) bump('comebackNobody');
     if (opps.some((p) => p.level === 'expert')) { bump('davidGoliath'); L.winsExpert++; }
     if (opps.some((p) => p.level === 'beginner')) L.winsBeginner++;
     if (opps.some((p) => myScore - p.score >= 100)) bump('humiliation');
@@ -331,6 +346,7 @@ export function commitGame(tracker, game, store = globalThis.localStorage) {
     }
   } else {
     L.lossStreak++; L.winStreak = 0;
+    L.losses = (L.losses || 0) + 1;
     if (L.lossStreak === 5) bump('godsAngry');
     const w = s.players[s.winner];
     if (w && w.score - myScore === (s.mode === 'fives' ? 5 : 1)) bump('soCloseLose');
@@ -338,7 +354,7 @@ export function commitGame(tracker, game, store = globalThis.localStorage) {
   L.lastWinner = won ? 'you' : (s.players[s.winner] ? (s.players[s.winner].rosterId || s.players[s.winner].name) : null);
   if (tracker.g.doubles >= 10) bump('doubleTrouble');
   if (tracker.g.causedDraws >= 5) bump('gotcha');
-  if (tracker.g.hands >= 25) bump('longGame');
+  if (tracker.g.hands >= 12) bump('longGame');
   if (tracker.g.blocked >= 5) bump('brickWall');
 
   for (const [id, n] of Object.entries(c)) {

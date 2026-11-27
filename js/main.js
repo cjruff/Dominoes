@@ -630,13 +630,60 @@ function onHandTile(t, moves) {
 }
 let lastTap = { id: null, at: 0 };
 
+// Drawing: open the boneyard and let you pick face-down tiles yourself. Their
+// values were fixed by the shuffle at the deal; you're choosing which one to take.
+// The window stays until you draw a tile you can play or the boneyard runs out.
 $('btnDraw').onclick = () => {
   if (!myTurnNow() || !game.canDraw()) return;
-  const t = game.draw();
-  status(`You drew the ${t[0]}-${t[1]}.`);
-  render();
-  if (!game.legalMovesFor().length && !game.canDraw()) status('Still nothing to play — pass.');
+  showBoneyard();
 };
+
+function showBoneyard() {
+  const s = game.s;
+  const slots = s.boneyard.slice();          // the actual tiles, in their shuffled spots
+  const taken = new Map();                    // slot -> tile you drew from it
+  let closing = false;
+  const need = [...new Set(openEnds(s.board).map((e) => e.value))].sort((a, b) => a - b);
+  const draw = () => {
+    const grid = slots.map((t, k) => taken.has(k)
+      ? `<div class="by-slot taken" data-k="${k}"></div>`
+      : `<button class="by-slot" data-k="${k}" aria-label="Face-down tile"></button>`).join('');
+    showOverlay(`<h2>Boneyard</h2>
+      <p class="by-need">You need a tile with ${need.map((v) => `<b class="gold">${v}</b>`).join(' or ')}. Pick one.</p>
+      <div class="by-grid">${grid}</div>
+      <p class="by-msg" id="byMsg">${slots.length - taken.size} left in the boneyard</p>`, 'boneyard');
+    for (const el of $('panel').querySelectorAll('.by-slot')) {
+      const k = Number(el.dataset.k);
+      el.appendChild(taken.has(k) ? tileSvg(taken.get(k), { theme }) : tileSvg([0, 0], { theme, faceDown: true }));
+      if (!taken.has(k)) el.onclick = () => pick(k);
+    }
+  };
+  const pick = (k) => {
+    if (closing || taken.has(k) || !myTurnNow() || !game.canDraw()) return;
+    const idx = s.boneyard.indexOf(slots[k]);
+    if (idx < 0) return;
+    const t = game.draw(idx);
+    taken.set(k, t);
+    draw();
+    const slotEl = $('panel').querySelector(`.by-slot[data-k="${k}"]`);
+    if (slotEl) slotEl.classList.add('flip');
+    const plays = game.legalMovesFor().length > 0;
+    if (plays || !game.canDraw()) {
+      closing = true;
+      $('byMsg').innerHTML = plays ? `You drew the <b class="gold">${t[0]}-${t[1]}</b> — it plays!` : `You drew the ${t[0]}-${t[1]}. The boneyard is empty — you'll have to pass.`;
+      setTimeout(() => {
+        hideOverlay();
+        status(plays ? `You drew the ${t[0]}-${t[1]} — play it.` : 'Nothing to play and the boneyard is empty — pass.');
+        render();
+      }, 1300);
+    } else {
+      $('byMsg').textContent = `You drew the ${t[0]}-${t[1]} — no match. Pick another.`;
+    }
+    render();
+  };
+  draw();
+}
+
 $('btnPass').onclick = () => {
   if (!myTurnNow() || !game.mustPass()) return;
   busy = true;

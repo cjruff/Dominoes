@@ -177,11 +177,15 @@ export class Game {
     return null;
   }
 
-  draw() {
+  /** Draw from the boneyard. `index` picks a specific face-down tile (the human
+   *  chooses one); without it the next tile is taken. Tiles were shuffled at the deal. */
+  draw(index = null) {
     const s = this.s;
     if (!this.canDraw()) throw new Error('Cannot draw now');
     const p = this.current;
-    const t = s.boneyard.pop();
+    const i = index == null ? s.boneyard.length - 1 : index;
+    if (i < 0 || i >= s.boneyard.length) throw new Error('No such boneyard tile');
+    const t = s.boneyard.splice(i, 1)[0];
     p.hand.push(t);
     s.drewThisTurn++;
     this.log({ type: 'draw', player: p.idx, left: s.boneyard.length });

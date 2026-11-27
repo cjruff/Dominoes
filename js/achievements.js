@@ -62,6 +62,9 @@ export const ACHIEVEMENTS = [
   { id: 'scoreboardShock', cat: 2, name: 'Scoreboard Shock', desc: 'Score 50+ points in one hand', tiers: T500 },
   { id: 'shutout', cat: 2, name: 'Shutout', desc: 'Win a game without an opponent scoring', tiers: T50 },
   { id: 'chainReaction', cat: 2, name: 'Chain Reaction', desc: '5 scoring plays in a row, by you and your opponents', tiers: TFAST, fives: true },
+  { id: 'bookends', cat: 2, name: 'Bookends', desc: 'Score 20 by playing the double-4 with the double-6 showing on an end (or the double-6 with the double-4 showing)', tiers: T250, fives: true },
+  { id: 'toTheBank', cat: 2, name: 'Heading to the Bank', desc: 'Go out on a play that scores 20+ points', tiers: T250, fives: true },
+  { id: 'triplePlay', cat: 2, name: 'Triple Play', desc: 'Score with your last tile, collect the pips left in opponents’ hands, then score 5+ with the opening tile of the next hand', tiers: T250, fives: true },
   { id: 'doubledUpOn', cat: 2, name: 'Doubled Up On', desc: 'End a hand holding only doubles (3+)', tiers: T50 },
 
   // ---- Evil Genius / Opponent Torment ----
@@ -213,7 +216,23 @@ export class GameTracker {
 
   onPlay(ev, game) {
     const me = this.me, t = ev.tile, dbl = t[0] === t[1];
+    const opening = ev.nodeId === 0;
+    if (opening) {
+      // Triple Play, part 3: score 5+ with the opening tile of the next hand
+      if (this.triplePending && ev.player === me && ev.points >= 5) this.bump('triplePlay');
+      this.triplePending = false;
+    }
     if (ev.player === me) {
+      const handEmpty = game.s.players[me].hand.length === 0;
+      // Bookends: the 4-4 and 6-6 both showing on ends, for exactly 20
+      if (dbl && (t[0] === 4 || t[0] === 6) && ev.points === 20) {
+        const other = t[0] === 4 ? 6 : 4;
+        const n = game.s.board.nodes.find((x) => x.tile[0] === other && x.tile[1] === other);
+        const exposed = n && (n.parent === null ? (n.children.E == null || n.children.W == null) : n.children.F == null);
+        if (exposed) this.bump('bookends');
+      }
+      if (handEmpty && ev.points >= 20) this.bump('toTheBank');
+      this.lastScoredOut = handEmpty && ev.points > 0;
       if (dbl) { this.h.doubles++; this.g.doubles++; if (this.h.doubles === 5) this.bump('doubleDown'); }
       if (dbl && t[0] === 1) this.bump('snakeEyes');
       if (dbl && t[0] === 6) this.bump('doubleSixClub');
@@ -236,6 +255,8 @@ export class GameTracker {
     if (ev.reason === 'blocked') this.g.blocked++;
     if (ev.winner === me) {
       this.g.handsWon++;
+      // Triple Play, parts 1 and 2: scored going out, and collected opponents' pips
+      this.triplePending = ev.reason === 'domino' && this.lastScoredOut && ev.award > 0;
       if (ev.reason === 'blocked') {
         this.bump('blockParty');
         if (ev.hands.every((h, i) => i === me || mine.length < h.length)) this.bump('cruel');
@@ -243,6 +264,7 @@ export class GameTracker {
       if (this.h.denied) this.bump('denial');
       if (ev.hands.some((h, i) => i !== me && h.length === 1 && h[0][0] === 0 && h[0][1] === 0)) this.bump('howBoutNo');
     } else {
+      this.triplePending = false;
       this.g.handsLost++;
       if (mine.length === 1 && mine[0][0] === 0 && mine[0][1] === 0) this.bump('cheap');
     }

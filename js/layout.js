@@ -31,6 +31,19 @@ function rectFrom(A, u, s0, s1, v, t0, t1) {
 }
 
 const hit = (a, b) => a.x0 < b.x1 - 0.02 && b.x0 < a.x1 - 0.02 && a.y0 < b.y1 - 0.02 && b.y0 < a.y1 - 0.02;
+// Tiles that aren't joined should keep a visible gap, so a line that merely
+// passes another never looks like it connects to it.
+const GAP = 0.3;
+const crowds = (a, b) => a.x0 < b.x1 + GAP && b.x0 < a.x1 + GAP && a.y0 < b.y1 + GAP && b.y0 < a.y1 + GAP;
+/** blocked: 2 = overlaps a tile, 1 = touches/crowds an unjoined tile, 0 = clear */
+function blocked(rect, rects, parentRect) {
+  let level = 0;
+  for (const r of rects) {
+    if (hit(r, rect)) return 2;
+    if (r !== parentRect && crowds(r, rect)) level = 1;
+  }
+  return level;
+}
 const union = (a, b) => ({ x0: Math.min(a.x0, b.x0), y0: Math.min(a.y0, b.y0), x1: Math.max(a.x1, b.x1), y1: Math.max(a.y1, b.y1) });
 
 export function limitsFor(aspect) {
@@ -87,21 +100,26 @@ function placeAt(exit, dbl, inPip, outPip, rects, lim) {
   }
   const order = dbl ? [D] : [...new Set([want, D, CW[D], CCW[D]])].filter((c) => c !== OPP[D]);
   let chosen = null;
+  const P = exit.from || null;
   if (arm.mode === 'spiral' && !dbl) {
     // Branch arms: among clear headings, prefer the one with the most open table ahead
-    // (the snaking/turn preference breaks ties), so branches don't run into other tiles.
-    let best = -1;
+    // (the turn preference breaks ties), so branches don't run into other tiles.
+    let best = -Infinity;
     order.forEach((c, i) => {
       const g = c === D ? straight : geometry(exit, c, dbl, inPip, outPip);
-      if (rects.some((r) => hit(r, g.rect))) return;
+      const b = blocked(g.rect, rects, P);
+      if (b === 2) return;
       const ahead = freeRun({ A: g.exits.F.A, D: c }, [...rects, g.rect], 4);
-      const score = ahead * 10 - i;
+      const score = ahead * 10 - i - b * 100;
       if (score > best) { best = score; chosen = { c, g }; }
     });
   } else {
-    for (const c of order) {
-      const g = c === D ? straight : geometry(exit, c, dbl, inPip, outPip);
-      if (!rects.some((r) => hit(r, g.rect))) { chosen = { c, g }; break; }
+    for (const level of [0, 1]) {
+      for (const c of order) {
+        const g = c === D ? straight : geometry(exit, c, dbl, inPip, outPip);
+        if (blocked(g.rect, rects, P) <= level) { chosen = { c, g }; break; }
+      }
+      if (chosen) break;
     }
   }
   if (!chosen) chosen = { c: want, g: want === D ? straight : geometry(exit, want, dbl, inPip, outPip) };
@@ -116,34 +134,39 @@ function placeAt(exit, dbl, inPip, outPip, rects, lim) {
     else next = { mode: 'spiral', turns: 1 };
   } else next = c === D ? arm : { ...arm, turns: (arm.turns || 0) + 1 };
 
-  const exits = { F: { ...chosen.g.exits.F, arm: next } };
+  const from = chosen.g.rect;
+  const exits = { F: { ...chosen.g.exits.F, arm: next, from } };
   if (chosen.g.exits.L) {
-    exits.L = { ...chosen.g.exits.L, arm: { mode: 'spiral', turns: 0 } };
-    exits.R = { ...chosen.g.exits.R, arm: { mode: 'spiral', turns: 0 } };
+    exits.L = { ...chosen.g.exits.L, arm: { mode: 'spiral', turns: 0 }, from };
+    exits.R = { ...chosen.g.exits.R, arm: { mode: 'spiral', turns: 0 }, from };
   }
   return { rect: chosen.g.rect, halves: chosen.g.halves, exits, heading: c };
 }
 
-function rootGeometry(node) {
+// In games with spinners (Fives), the line arms make a pinwheel that always heads
+// outward, instead of snaking back toward the middle where the spinner branches grow.
+function rootGeometry(node, spinnerGame = false) {
   const [a, b] = node.tile;
+  const spiral = { mode: 'spiral', turns: 0 };
+  const band = (main, cross) => (node.spinner || spinnerGame ? spiral : { mode: 'band', main, cross, crossStep: false });
   if (node.double) {
     const h1 = { x0: -0.5, y0: -1, x1: 0.5, y1: 0 }, h2 = { x0: -0.5, y0: 0, x1: 0.5, y1: 1 };
-    const spiral = { mode: 'spiral', turns: 0 };
-    const band = (main, cross) => (node.spinner ? spiral : { mode: 'band', main, cross, crossStep: false });
+    const rect = union(h1, h2);
     return {
-      rect: union(h1, h2), halves: [{ rect: h1, pip: a }, { rect: h2, pip: b }],
+      rect, halves: [{ rect: h1, pip: a }, { rect: h2, pip: b }],
       exits: {
-        E: { A: { x: 0.5, y: 0 }, D: 'E', arm: band('E', 'S') }, W: { A: { x: -0.5, y: 0 }, D: 'W', arm: band('W', 'N') },
-        N: { A: { x: 0, y: -1 }, D: 'N', arm: spiral }, S: { A: { x: 0, y: 1 }, D: 'S', arm: spiral },
+        E: { A: { x: 0.5, y: 0 }, D: 'E', arm: band('E', 'S'), from: rect }, W: { A: { x: -0.5, y: 0 }, D: 'W', arm: band('W', 'N'), from: rect },
+        N: { A: { x: 0, y: -1 }, D: 'N', arm: spiral, from: rect }, S: { A: { x: 0, y: 1 }, D: 'S', arm: spiral, from: rect },
       },
     };
   }
   const h1 = { x0: -1, y0: -0.5, x1: 0, y1: 0.5 }, h2 = { x0: 0, y0: -0.5, x1: 1, y1: 0.5 };
+  const rect = union(h1, h2);
   return {
-    rect: union(h1, h2), halves: [{ rect: h1, pip: a }, { rect: h2, pip: b }],
+    rect, halves: [{ rect: h1, pip: a }, { rect: h2, pip: b }],
     exits: {
-      E: { A: { x: 1, y: 0 }, D: 'E', arm: { mode: 'band', main: 'E', cross: 'S', crossStep: false } },
-      W: { A: { x: -1, y: 0 }, D: 'W', arm: { mode: 'band', main: 'W', cross: 'N', crossStep: false } },
+      E: { A: { x: 1, y: 0 }, D: 'E', arm: band('E', 'S'), from: rect },
+      W: { A: { x: -1, y: 0 }, D: 'W', arm: band('W', 'N'), from: rect },
     },
   };
 }
@@ -188,7 +211,7 @@ export function layoutBoard(board, aspect) {
   let bbox = null;
   for (const n of board.nodes) {
     let g;
-    if (n.parent === null) g = rootGeometry(n);
+    if (n.parent === null) g = rootGeometry(n, board.spinnerRule && board.spinnerRule !== 'none');
     else {
       const { swap, exit } = exitFor(exits, used, rects, n.parent, n.slot);
       if (swap) { const t = exits[swap[0]]; exits[swap[0]] = exits[swap[1]]; exits[swap[1]] = t; }

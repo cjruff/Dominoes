@@ -539,3 +539,9 @@ button.by-slot:hover { transform: translateY(-5px); filter: drop-shadow(0 0 8px 
   .by-need, .by-msg { font-size: 15px; margin: 4px 0; }
   .panel.boneyard h2 { font-size: 20px; margin: 0; }
 }
+
+/* Rolling score wheels */
+.odo { display: inline-flex; height: 1em; line-height: 1em; overflow: hidden; vertical-align: -0.12em; font-variant-numeric: tabular-nums; }
+.odo-col { display: inline-block; height: 1em; overflow: hidden; }
+.odo-strip { display: flex; flex-direction: column; will-change: transform; }
+.odo-strip i { font-style: normal; display: block; height: 1em; line-height: 1em; text-align: center; }

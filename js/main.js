@@ -237,6 +237,7 @@ function startGame() {
   game = new Game({ mode: setup.mode, spinnerRule: setup.spinnerRule, players, target: setup.target }, makeRng(seed()), makeRng(seed()));
   game.onEvent = onEvent;
   tracker = new GameTracker(game, 0);
+  resetRolls();
   recorded = false; newMedals = []; gloatShown = false; turnDraws = {};
   allPlays = [];
   $('setup').classList.add('hidden');
@@ -344,6 +345,7 @@ function onEvent(ev, g) {
 function render() {
   if (!game) return;
   renderDocks();
+  paintOdos();
   renderBoard();
   renderHand();
 }
@@ -356,6 +358,62 @@ function avatarHtml(p) {
   if (p.portrait) return `<span class="av"><img src="${p.portrait}" alt=""></span>`;
   const ch = esc((p.name.trim()[0] || '?').toUpperCase());
   return `<span class="av" style="background:${AVATAR_COLORS[p.idx % 4]}">${ch}</span>`;
+}
+
+// ---------- Rolling score counters (old gas-pump style) ----------
+// Each score shows as digit wheels. When points come in, the ones wheel spins up
+// and each wheel to its left turns only as the one beside it rolls past 9.
+const shown = {};         // player idx -> number currently showing (may be fractional mid-roll)
+const rolls = {};         // player idx -> { from, to, start }
+const ROLL_MS = 1200;
+let rollFrame = null;
+
+function odo(p) { return `<span class="odo" data-p="${p.idx}"></span>`; }
+
+function resetRolls() { for (const k of Object.keys(shown)) delete shown[k]; for (const k of Object.keys(rolls)) delete rolls[k]; }
+
+function wheelPos(v, i) {
+  // Position (0–10) of the wheel for digit i (0 = ones) when the counter reads v.
+  const p = Math.pow(10, i);
+  if (i === 0) return v % 10;
+  const base = Math.floor(v / p) % 10;
+  const lower = (v / p) * 10 % 10;                   // where the wheel to the right is
+  return base + Math.max(0, lower - 9);              // turn only while it rolls 9 → 0
+}
+
+function paintOdos() {
+  if (!game) return;
+  const now = performance.now();
+  let moving = false;
+  for (const p of game.s.players) {
+    const target = p.score;
+    if (shown[p.idx] == null || target < (shown[p.idx] ?? 0)) { shown[p.idx] = target; delete rolls[p.idx]; }
+    const r = rolls[p.idx];
+    if (shown[p.idx] < target && (!r || r.to !== target)) rolls[p.idx] = { from: shown[p.idx], to: target, start: now };
+    const rr = rolls[p.idx];
+    if (rr) {
+      const t = Math.min(1, (now - rr.start) / ROLL_MS);
+      const ease = 1 - Math.pow(1 - t, 3);
+      shown[p.idx] = rr.from + (rr.to - rr.from) * ease;
+      if (t >= 1) { shown[p.idx] = rr.to; delete rolls[p.idx]; } else moving = true;
+    }
+    const v = shown[p.idx];
+    const digits = String(target).length;
+    for (const el of document.querySelectorAll(`.odo[data-p="${p.idx}"]`)) {
+      if (el.childElementCount !== digits) {
+        el.innerHTML = Array.from({ length: digits }, () =>
+          `<span class="odo-col"><span class="odo-strip">${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map((d) => `<i>${d}</i>`).join('')}</span></span>`).join('');
+        el.setAttribute('aria-label', String(target));
+      }
+      [...el.children].forEach((col, k) => {
+        const i = digits - 1 - k;                    // digit place for this wheel
+        const pos = wheelPos(v, i);
+        col.firstElementChild.style.transform = `translateY(${-pos}em)`;
+        col.style.opacity = i > 0 && v < Math.pow(10, i) && pos < 0.02 ? '0' : '1'; // no leading zeros
+      });
+    }
+  }
+  if (moving && !rollFrame) rollFrame = requestAnimationFrame(() => { rollFrame = null; paintOdos(); });
 }
 
 function renderDocks() {
@@ -380,7 +438,7 @@ function renderDocks() {
     // Large style: the full portrait stands on top of the card (initial circle if there's no picture)
     const pic = big && p.image ? `<img class="portrait" src="${p.image}" alt="">` : avatarHtml(p);
     d.innerHTML = `${pic}<div class="who"><span class="nm"></span><span class="lv">${LEVEL_NAMES[p.level]}</span>` +
-      `<span class="sc">${p.score}</span><span class="count">${p.hand.length} tile${p.hand.length === 1 ? '' : 's'}</span></div><div class="backs" title="${p.hand.length} tiles">${backs}</div>`;
+      `<span class="sc">${odo(p)}</span><span class="count">${p.hand.length} tile${p.hand.length === 1 ? '' : 's'}</span></div><div class="backs" title="${p.hand.length} tiles">${backs}</div>`;
     d.querySelector('.nm').textContent = p.name;
     table.appendChild(d);
   }
@@ -396,10 +454,10 @@ function renderDocks() {
   $('handBadge').classList.toggle('hidden', !showEnds);
   // Everyone's score, bottom-left of the table
   $('scoreBadge').innerHTML = s.players.map((p) =>
-    `<span class="sb"><span class="sb-n">${esc(p.human ? (p.name || 'You') : p.name)}</span> ${p.score}</span>`).join('<span class="sb-dot">·</span>');
+    `<span class="sb"><span class="sb-n">${esc(p.human ? (p.name || 'You') : p.name)}</span> ${odo(p)}</span>`).join('<span class="sb-dot">·</span>');
   $('info').innerHTML = `${MODES[s.mode].name}${s.mode === 'fives' && s.spinnerRule === 'all' ? ' (all spin)' : ''} to ${s.target} · Hand ${s.handNo}${ends}${bone}`;
   $('me').className = s.turn === me.idx && !s.handOver ? 'turn' : '';
-  $('me').innerHTML = `${avatarHtml(me)}<div class="who"><span class="nm"></span><span class="sc">${me.score}</span></div>`;
+  $('me').innerHTML = `${avatarHtml(me)}<div class="who"><span class="nm"></span><span class="sc">${odo(me)}</span></div>`;
   $('me').querySelector('.nm').textContent = me.name;
 }
 

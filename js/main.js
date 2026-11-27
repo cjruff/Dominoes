@@ -64,6 +64,7 @@ function segInit(id, value, onPick) {
 function renderSetup() {
   segInit('segMode', setup.mode, (v) => { if (v !== setup.mode) setup.target = MODES[v].defaultTarget; setup.mode = v; renderSetup(); });
   segInit('segSpinner', setup.spinnerRule, (v) => { setup.spinnerRule = v; });
+  segInit('segHints', setup.hints === false ? 'off' : 'on', (v) => { setup.hints = v === 'on'; saveSetup(setup); });
   segInit('segPlayers', setup.players, (v) => { setup.players = Number(v); renderSetup(); });
   $('fieldSpinner').classList.toggle('hidden', setup.mode !== 'fives');
   $('modeHint').textContent = MODE_HINTS[setup.mode];
@@ -269,6 +270,8 @@ function step() {
     const moves = game.legalMovesFor();
     if (moves.length === 1 && s.board.nodes.length === 0) { selected = tileId(moves[0].tile); render(); }
     if (!moves.length) status(game.canDraw() ? 'No play — draw from the boneyard.' : 'No play and nothing to draw — pass.');
+    // Nothing to play but tiles left: open the boneyard straight away
+    if (!moves.length && game.canDraw()) setTimeout(() => { if (myTurnNow() && game.canDraw() && !game.legalMovesFor().length) showBoneyard(); }, 600);
     else status('Your turn.');
     return;
   }
@@ -505,7 +508,7 @@ function renderBoard() {
     const grp = drawTile(svg, g.pv.halves, { ghost: true, className: 'ghost' });
     grp.setAttribute('tabindex', '0');
     grp.setAttribute('role', 'button');
-    if (s.mode === 'fives') {
+    if (s.mode === 'fives' && setup.hints !== false) {
       const r = g.pv.rect;
       // Label what the play would score
       const pts = pointsIf(g.m);

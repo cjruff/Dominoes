@@ -562,3 +562,14 @@ button.by-slot:hover { transform: translateY(-5px); filter: drop-shadow(0 0 8px 
 .nm-tip::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -7px; border: 7px solid transparent; border-top-color: var(--gold); }
 .nm-item:hover .nm-tip, .nm-item:focus .nm-tip, .nm-item.tip .nm-tip { display: block; }
 .medal-row .nm-item:first-child .nm-tip { left: 0; transform: none; } .medal-row .nm-item:first-child .nm-tip::after { left: 40px; }
+
+.sub-label { display: block; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; opacity: .8; margin: 12px 0 6px; }
+
+/* Boneyard tiles at twice the size (capped so the window still fits short phone screens) */
+.panel.boneyard { width: min(980px, 100%); }
+.by-slot { height: min(168px, 30vh); width: calc(min(168px, 30vh) * .548); }
+.by-grid { gap: 12px; }
+@media (max-height: 480px), (max-width: 560px) {
+  .by-slot { height: min(124px, 30vh); width: calc(min(124px, 30vh) * .548); }
+  .by-grid { gap: 8px; }
+}
